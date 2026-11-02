@@ -121,7 +121,7 @@ client.on('messageCreate', async (message) => {
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
-          .setColor(0xFF69B4) // <--- ĐÃ ĐỔI THANH VIỀN BÊN TRÁI THÀNH MÀU HỒNG (HOT PINK)
+          .setColor(0xFF69B4) // Màu hồng hot pink
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
           .setFooter({
             text: `⏰ Kết thúc lúc`,
@@ -198,4 +198,13 @@ client.on('messageCreate', async (message) => {
             `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🎉 **Người chiến thắng:** ${winnerMentions}`
           )
-          .setColor(0xFF69B4); // Khi kết thúc vẫn
+          .setColor(0xFF69B4);
+
+        await fetchedMsg.edit({ embeds: [endEmbed] });
+        message.channel.send(`🎉 Chúc mừng cậu chủ ${winnerMentions} đã bú đẫm ga **${prize}** của <@${message.author.id}>!`);
+      }, durationMs);
+    }
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
