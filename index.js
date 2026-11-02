@@ -14,11 +14,12 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildMembers
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildPresences
   ]
 });
 
-// Cấu hình Role tăng Entry (Thay ID thật của server vào đây nếu cần)
+// Cấu hình Role tăng Entry (Thay ID thật của server vào đây nếu có)
 const ROLE_ENTRIES = {
   '123456789012345678': 1, 
   '987654321098765432': 2  
@@ -49,7 +50,7 @@ function parseCustomDuration(str) {
   return found && totalMs > 0 ? totalMs : null;
 }
 
-// Hàm đổi miligiây thành chuỗi hiển thị XH XM XS
+// Hàm đổi miligiây thành chuỗi hiển thị
 function formatTimeLeft(msLeft) {
   if (msLeft <= 0) return '0S';
   const seconds = Math.floor((msLeft / 1000) % 60);
@@ -97,7 +98,7 @@ client.on('messageCreate', async (message) => {
 
     const endTime = Date.now() + durationMs;
 
-    // --- EMBED GIAO DIỆN MỚI: ĐẸP VÀ RÕ RÀNG HƠN ---
+    // --- EMBED GIAO DIỆN MỚI BẮT MẮT + ẢNH ---
     const buildEmbed = (msRemaining) => {
       return new EmbedBuilder()
         .setAuthor({ 
@@ -111,7 +112,7 @@ client.on('messageCreate', async (message) => {
           `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
           `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
         )
-        .setColor(0x5865F2) // Màu Blurple sang trọng của Discord
+        .setColor(0x5865F2)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
         .setFooter({
           text: `⏰ Kết thúc lúc`,
@@ -188,9 +189,11 @@ client.on('messageCreate', async (message) => {
           `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
           `• 🎉 **Người chiến thắng:** ${winnerMentions}`
         )
-        .setColor(0xFEE75C); // Màu vàng hoàng kim khi kết thúc
+        .setColor(0xFEE75C);
 
       await fetchedMsg.edit({ embeds: [endEmbed] });
+      
+      // --- CÂU CHÚC MỪNG MỚI THEO Ý BẠN ---
       message.channel.send(`🎉 Chúc mừng cậu chủ ${winnerMentions} đã bú đẫm ga **${prize}** của <@${message.author.id}>!`);
     }, durationMs);
   }
