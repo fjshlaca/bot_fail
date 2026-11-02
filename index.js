@@ -19,7 +19,7 @@ const client = new Client({
   ]
 });
 
-// Cấu hình Role tăng Entry (Thay ID thật của server vào đây nếu có)
+// Cấu hình Role tăng Entry
 const ROLE_ENTRIES = {
   '123456789012345678': 1, 
   '987654321098765432': 2  
@@ -79,10 +79,9 @@ client.on('messageCreate', async (message) => {
   if (command === 'ga') {
     const winnerCount = parseInt(args[0]);
     const durationInput = args[1];
-    const prize = args.slice(2).join(' ');
 
     if (!winnerCount || isNaN(winnerCount) || winnerCount < 1) {
-      return message.reply('❌ Vui lòng nhập số lượng giải hợp lệ! Ví dụ: `z.ga 1 30s Nitro`');
+      return message.reply('❌ Số lượng giải không hợp lệ! Cú pháp: `z.ga <số_giải> <thời_gian> [số_lượng_tạo] <nội_dung>`');
     }
 
     const durationMs = parseCustomDuration(durationInput);
@@ -90,113 +89,113 @@ client.on('messageCreate', async (message) => {
       return message.reply('❌ Thời gian không hợp lệ! Dùng: `s`, `p`, `h`, `d`. Ví dụ: `30s`, `15p`, `24h`.');
     }
 
+    let giveawayCount = 1;
+    let prizeStartIndex = 2;
+
+    const potentialCount = parseInt(args[2]);
+    if (!isNaN(potentialCount) && potentialCount > 0) {
+      giveawayCount = potentialCount;
+      prizeStartIndex = 3;
+    }
+
+    const prize = args.slice(prizeStartIndex).join(' ');
     if (!prize) {
       return message.reply('❌ Vui lòng nhập nội dung giveaway!');
     }
 
     await message.delete().catch(() => {});
 
-    const endTime = Date.now() + durationMs;
+    for (let i = 0; i < giveawayCount; i++) {
+      const endTime = Date.now() + durationMs;
 
-    // --- EMBED GIAO DIỆN MỚI BẮT MẮT + ẢNH ---
-    const buildEmbed = (msRemaining) => {
-      return new EmbedBuilder()
-        .setAuthor({ 
-          name: '🎁 HỆ THỐNG GIVEAWAY', 
-          iconURL: message.guild.iconURL({ dynamic: true }) 
-        })
-        .setTitle(`🎉 ${prize}`)
-        .setDescription(
-          `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
-          `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
-          `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
-          `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
-        )
-        .setColor(0x5865F2)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .setFooter({
-          text: `⏰ Kết thúc lúc`,
-          iconURL: client.user.displayAvatarURL()
-        })
-        .setTimestamp(endTime);
-    };
+      const buildEmbed = (msRemaining) => {
+        return new EmbedBuilder()
+          .setAuthor({ 
+            name: '🎁 HỆ THỐNG GIVEAWAY', 
+            iconURL: message.guild.iconURL({ dynamic: true }) 
+          })
+          .setTitle(`🎉 ${prize}`)
+          .setDescription(
+            `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
+            `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+            `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
+            `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
+          )
+          .setColor(0xFF69B4) // <--- ĐÃ ĐỔI THANH VIỀN BÊN TRÁI THÀNH MÀU HỒNG (HOT PINK)
+          .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+          .setFooter({
+            text: `⏰ Kết thúc lúc`,
+            iconURL: client.user.displayAvatarURL()
+          })
+          .setTimestamp(endTime);
+      };
 
-    const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
-    await gaMessage.react(EMOJI_GA);
+      const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
+      await gaMessage.react(EMOJI_GA);
 
-    const interval = setInterval(async () => {
-      const remaining = endTime - Date.now();
-      if (remaining <= 0) {
+      const interval = setInterval(async () => {
+        const remaining = endTime - Date.now();
+        if (remaining <= 0) {
+          clearInterval(interval);
+        } else {
+          await gaMessage.edit({ embeds: [buildEmbed(remaining)] }).catch(() => clearInterval(interval));
+        }
+      }, 5000);
+
+      setTimeout(async () => {
         clearInterval(interval);
-      } else {
-        await gaMessage.edit({ embeds: [buildEmbed(remaining)] }).catch(() => clearInterval(interval));
-      }
-    }, 5000);
 
-    setTimeout(async () => {
-      clearInterval(interval);
+        const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
+        if (!fetchedMsg) return;
 
-      const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
-      if (!fetchedMsg) return;
+        const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA);
+        let users = reaction ? await reaction.users.fetch() : new Map();
+        const validUsers = users.filter(u => !u.bot);
 
-      const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA);
-      let users = reaction ? await reaction.users.fetch() : new Map();
-      const validUsers = users.filter(u => !u.bot);
+        if (validUsers.size === 0) {
+          const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
+            .setTitle(`❌ [ĐÃ KẾT THÚC] ${prize}`)
+            .setDescription(`> Không có ai tham gia giveaway này nên không tìm được người trúng thưởng!`)
+            .setColor(0xED4245);
+          return fetchedMsg.edit({ embeds: [endEmbed] });
+        }
 
-      if (validUsers.size === 0) {
-        const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-          .setTitle(`❌ [ĐÃ KẾT THÚC] ${prize}`)
-          .setDescription(`> Không có ai tham gia giveaway này nên không tìm được người trúng thưởng!`)
-          .setColor(0xED4245);
-        return fetchedMsg.edit({ embeds: [endEmbed] });
-      }
+        const pool = [];
+        for (const [userId] of validUsers) {
+          let baseEntries = 1;
+          try {
+            const member = await message.guild.members.fetch(userId);
+            for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
+              if (member.roles.cache.has(roleId)) baseEntries += extra;
+            }
+          } catch (e) {}
 
-      const pool = [];
-      for (const [userId] of validUsers) {
-        let baseEntries = 1;
-        try {
-          const member = await message.guild.members.fetch(userId);
-          for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
-            if (member.roles.cache.has(roleId)) baseEntries += extra;
+          for (let k = 0; k < baseEntries; k++) {
+            pool.push(userId);
           }
-        } catch (e) {}
-
-        for (let i = 0; i < baseEntries; i++) {
-          pool.push(userId);
         }
-      }
 
-      const winners = [];
-      const actualWinnerCount = Math.min(winnerCount, validUsers.size);
+        const winners = [];
+        const actualWinnerCount = Math.min(winnerCount, validUsers.size);
 
-      while (winners.length < actualWinnerCount && pool.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pool.length);
-        const selectedId = pool[randomIndex];
-        if (!winners.includes(selectedId)) {
-          winners.push(selectedId);
+        while (winners.length < actualWinnerCount && pool.length > 0) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          const selectedId = pool[randomIndex];
+          if (!winners.includes(selectedId)) {
+            winners.push(selectedId);
+          }
+          for (let k = pool.length - 1; k >= 0; k--) {
+            if (pool[k] === selectedId) pool.splice(k, 1);
+          }
         }
-        for (let i = pool.length - 1; i >= 0; i--) {
-          if (pool[i] === selectedId) pool.splice(i, 1);
-        }
-      }
 
-      const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
+        const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-      const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-        .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
-        .setDescription(
-          `> Giveaway đã khép lại thành công!\n\n` +
-          `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
-          `• 🎉 **Người chiến thắng:** ${winnerMentions}`
-        )
-        .setColor(0xFEE75C);
-
-      await fetchedMsg.edit({ embeds: [endEmbed] });
-      
-      // --- CÂU CHÚC MỪNG MỚI THEO Ý BẠN ---
-      message.channel.send(`🎉 Chúc mừng cậu chủ ${winnerMentions} đã bú đẫm ga **${prize}** của <@${message.author.id}>!`);
-    }, durationMs);
-  }
-});
-
-client.login(process.env.DISCORD_TOKEN);
+        const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
+          .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
+          .setDescription(
+            `> Giveaway đã khép lại thành công!\n\n` +
+            `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+            `• 🎉 **Người chiến thắng:** ${winnerMentions}`
+          )
+          .setColor(0xFF69B4); // Khi kết thúc vẫn
