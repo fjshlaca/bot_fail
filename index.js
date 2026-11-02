@@ -18,10 +18,10 @@ const client = new Client({
   ]
 });
 
-// Cấu hình Role tăng Entry (Thay ID thật của server vào đây)
+// Cấu hình Role tăng Entry (Thay ID thật của server vào đây nếu cần)
 const ROLE_ENTRIES = {
-  '123456789012345678': 1, // Role VIP: +1 entry (Tổng = 2)
-  '987654321098765432': 2  // Role SVIP: +2 entries (Tổng = 3)
+  '123456789012345678': 1, 
+  '987654321098765432': 2  
 };
 
 const PREFIX = 'z.';
@@ -58,10 +58,10 @@ function formatTimeLeft(msLeft) {
   const days = Math.floor(msLeft / (1000 * 60 * 60 * 24));
 
   let res = '';
-  if (days > 0) res += `${days}D `;
-  if (hours > 0) res += `${hours}H `;
-  if (minutes > 0) res += `${minutes}M `;
-  res += `${seconds}S`;
+  if (days > 0) res += `${days} ngày `;
+  if (hours > 0) res += `${hours} giờ `;
+  if (minutes > 0) res += `${minutes} phút `;
+  res += `${seconds} giây`;
   return res.trim();
 }
 
@@ -81,12 +81,12 @@ client.on('messageCreate', async (message) => {
     const prize = args.slice(2).join(' ');
 
     if (!winnerCount || isNaN(winnerCount) || winnerCount < 1) {
-      return message.reply('❌ Vui lòng nhập số lượng giải hợp lệ! Ví dụ: `z.ga 1 24h 1tr OwO có REG`');
+      return message.reply('❌ Vui lòng nhập số lượng giải hợp lệ! Ví dụ: `z.ga 1 30s Nitro`');
     }
 
     const durationMs = parseCustomDuration(durationInput);
     if (!durationMs) {
-      return message.reply('❌ Thời gian không hợp lệ! Dùng: `s` (giây), `p` (phút), `h` (giờ), `d` (ngày). Ví dụ: `45s`, `30p`, `24h`, `2d`.');
+      return message.reply('❌ Thời gian không hợp lệ! Dùng: `s`, `p`, `h`, `d`. Ví dụ: `30s`, `15p`, `24h`.');
     }
 
     if (!prize) {
@@ -97,19 +97,25 @@ client.on('messageCreate', async (message) => {
 
     const endTime = Date.now() + durationMs;
 
+    // --- EMBED GIAO DIỆN MỚI: ĐẸP VÀ RÕ RÀNG HƠN ---
     const buildEmbed = (msRemaining) => {
       return new EmbedBuilder()
-        .setTitle('🎉 GIVEAWAY ĐÃ BẮT ĐẦU')
+        .setAuthor({ 
+          name: '🎁 HỆ THỐNG GIVEAWAY', 
+          iconURL: message.guild.iconURL({ dynamic: true }) 
+        })
+        .setTitle(`🎉 ${prize}`)
         .setDescription(
-          `### **${prize}**\n\n` +
-          `• Nhấn vào ${EMOJI_GA} để tham gia\n` +
-          `• Được tổ chức bởi <@${message.author.id}>\n` +
-          `• Thời gian còn lại **${formatTimeLeft(msRemaining)}**`
+          `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
+          `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+          `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
+          `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
         )
-        .setColor(0x57F287)
+        .setColor(0x5865F2) // Màu Blurple sang trọng của Discord
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
         .setFooter({
-          text: `${winnerCount} giải | Quay thưởng lúc`,
-          iconURL: message.author.displayAvatarURL()
+          text: `⏰ Kết thúc lúc`,
+          iconURL: client.user.displayAvatarURL()
         })
         .setTimestamp(endTime);
     };
@@ -138,8 +144,8 @@ client.on('messageCreate', async (message) => {
 
       if (validUsers.size === 0) {
         const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-          .setTitle('🎉 GIVEAWAY ĐÃ KẾT THÚC')
-          .setDescription(`### **${prize}**\n\nKhông có ai tham gia giveaway này.`)
+          .setTitle(`❌ [ĐÃ KẾT THÚC] ${prize}`)
+          .setDescription(`> Không có ai tham gia giveaway này nên không tìm được người trúng thưởng!`)
           .setColor(0xED4245);
         return fetchedMsg.edit({ embeds: [endEmbed] });
       }
@@ -176,16 +182,16 @@ client.on('messageCreate', async (message) => {
       const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
       const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-        .setTitle('🎉 GIVEAWAY ĐÃ KẾT THÚC')
+        .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
         .setDescription(
-          `### **${prize}**\n\n` +
-          `• **Người trúng thưởng:** ${winnerMentions}\n` +
-          `• Được tổ chức bởi <@${message.author.id}>`
+          `> Giveaway đã khép lại thành công!\n\n` +
+          `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+          `• 🎉 **Người chiến thắng:** ${winnerMentions}`
         )
-        .setColor(0x2B2D31);
+        .setColor(0xFEE75C); // Màu vàng hoàng kim khi kết thúc
 
       await fetchedMsg.edit({ embeds: [endEmbed] });
-      message.channel.send(`🎉 Chúc mừng ${winnerMentions} đã trúng thưởng giveaway: **${prize}**!`);
+      message.channel.send(`🎉 Chúc mừng cậu chủ ${winnerMentions} đã bú đẫm ga **${prize}** của <@${message.author.id}>!`);
     }, durationMs);
   }
 });
