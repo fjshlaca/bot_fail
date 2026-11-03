@@ -28,7 +28,7 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
-const EMOJI_GA = '<:zh_meotukgian:1564668143597658185>1564668143597658185>';
+const EMOJI_GA = '<<:zh_meotukgian:1564668143597658185>1564668143597658185>';
 
 function parseCustomDuration(str) {
   if (!str) return null;
