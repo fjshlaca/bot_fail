@@ -206,7 +206,7 @@ client.on('messageCreate', async (message) => {
         .setDescription(
           `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
           `• 👑 **Người thực hiện:** <@${message.author.id}>\n` +
-          `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
+          `• <:hgtt_dau_check2:1376099672401383526> **Người chiến thắng mới:** ${newWinnerMention}`
         )
         .setColor(0x3498DB)
         .setTimestamp();
