@@ -28,8 +28,9 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
-// Định dạng chuẩn để hiển thị icon trong Embed và phản ứng
-const EMOJI_STRING = '<:zh_meotukgian:1564668143597658185>';
+
+// Dùng emoji chuẩn hiển thị rõ nét
+const EMOJI_DISPLAY = '<:zh_meotukgian:1564668143597658185>';
 const EMOJI_ID_ONLY = '1564668143597658185';
 
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
@@ -71,38 +72,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.5 LIVE] Đã đăng nhập: ${client.user.tag}`);
-});
-
-// --- TÍNH NĂNG TỰ ĐỘNG XÓA REACTION NẾU THIẾU ROLE ---
-client.on('messageReactionAdd', async (reaction, user) => {
-  if (user.bot) return;
-  if (reaction.partial) await reaction.fetch().catch(() => {});
-
-  // Kiểm tra xem có phải emoji giativay không
-  if (reaction.emoji.id !== EMOJI_ID_ONLY && reaction.emoji.name !== 'zh_meotukgian') return;
-
-  const message = reaction.message;
-  if (!message.embeds || message.embeds.length === 0) return;
-
-  const embed = message.embeds[0];
-  if (!embed.description) return;
-
-  // Đọc yêu cầu Role từ mô tả của Embed
-  if (embed.description.includes('Yêu cầu Role:')) {
-    const match = embed.description.match(/Yêu cầu Role:\s*(<@&(\d+)>|Everyone)/);
-    if (match && match[2]) {
-      const requiredRoleId = match[2];
-      try {
-        const guild = message.guild;
-        const member = await guild.members.fetch(user.id);
-        if (!member.roles.cache.has(requiredRoleId)) {
-          // Không có role -> Xóa reaction ngay lập tức
-          await reaction.users.remove(user.id).catch(() => {});
-        }
-      } catch (e) {}
-    }
-  }
+  console.log(`[VER 2.6 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -183,7 +153,7 @@ client.on('messageCreate', async (message) => {
           })
           .setTitle(`🎉 ${prize}`)
           .setDescription(
-            `> Hãy nhấn vào biểu tượng **${EMOJI_STRING}** bên dưới để tham gia ngay!\n\n` +
+            `> Hãy nhấn vào biểu tượng **${EMOJI_DISPLAY}** bên dưới để tham gia ngay!\n\n` +
             `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
@@ -203,7 +173,8 @@ client.on('messageCreate', async (message) => {
       try {
         await gaMessage.react(EMOJI_ID_ONLY);
       } catch (e) {
-        await gaMessage.react('🌙');
+        // Fallback an toàn nếu bot thiếu quyền dùng emoji ngoại bộ
+        await gaMessage.react('🎁').catch(() => {});
       }
 
       lastCreatedMessage = gaMessage;
@@ -217,16 +188,19 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
+      // --- KHI GIVEAWAY KẾT THÚC: LỌC BỎ NGƯỜI KHÔNG CÓ ROLE ---
       setTimeout(async () => {
         clearInterval(interval);
 
         const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
         if (!fetchedMsg) return;
 
+        // Tìm reaction chính xác theo ID hoặc lấy reaction đầu tiên
         const reaction = fetchedMsg.reactions.cache.find(r => r.emoji.id === EMOJI_ID_ONLY) || fetchedMsg.reactions.cache.first();
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
+        // Lọc cực kỳ nghiêm ngặt: User bắt buộc phải có đúng Role yêu cầu mới được tính hợp lệ
         if (targetRoleId) {
           const filteredMap = new Map();
           for (const [userId, userObj] of validUsers) {
@@ -253,7 +227,7 @@ client.on('messageCreate', async (message) => {
           let baseEntries = 1;
           try {
             const member = await message.guild.members.fetch(userId);
-            // Chỉ tính bonus entries nếu là Giveaway trên 1 giờ
+            // Chỉ tính bonus entries nếu không phải Flash Giveaway (>= 1 giờ)
             if (!isFlash) {
               for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
                 if (member.roles.cache.has(roleId)) baseEntries += extra;
