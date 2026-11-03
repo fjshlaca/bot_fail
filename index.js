@@ -307,7 +307,7 @@ client.on('messageCreate', async (message) => {
           .setTitle(`🎉 ${prize}`)
           .setDescription(
             `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
-            `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+            `• <:zh_luom:1563529206430826527> **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
