@@ -28,11 +28,10 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
-// Định dạng chuẩn hiển thị emoji trên Discord Embed
-const EMOJI_GA = '<:zh_meotukgian:1564668143597658185>';
-const EMOJI_ID = '1564668143597658185';
+// Định dạng chuẩn để hiển thị icon trong Embed và phản ứng
+const EMOJI_STRING = '<:zh_meotukgian:1564668143597658185>';
+const EMOJI_ID_ONLY = '1564668143597658185';
 
-// --- ĐƯỜNG DẪN GIF MỚI CHO BẢNG BONUS ENTRIES ---
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -72,7 +71,38 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.4 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 2.5 LIVE] Đã đăng nhập: ${client.user.tag}`);
+});
+
+// --- TÍNH NĂNG TỰ ĐỘNG XÓA REACTION NẾU THIẾU ROLE ---
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
+  if (reaction.partial) await reaction.fetch().catch(() => {});
+
+  // Kiểm tra xem có phải emoji giativay không
+  if (reaction.emoji.id !== EMOJI_ID_ONLY && reaction.emoji.name !== 'zh_meotukgian') return;
+
+  const message = reaction.message;
+  if (!message.embeds || message.embeds.length === 0) return;
+
+  const embed = message.embeds[0];
+  if (!embed.description) return;
+
+  // Đọc yêu cầu Role từ mô tả của Embed
+  if (embed.description.includes('Yêu cầu Role:')) {
+    const match = embed.description.match(/Yêu cầu Role:\s*(<@&(\d+)>|Everyone)/);
+    if (match && match[2]) {
+      const requiredRoleId = match[2];
+      try {
+        const guild = message.guild;
+        const member = await guild.members.fetch(user.id);
+        if (!member.roles.cache.has(requiredRoleId)) {
+          // Không có role -> Xóa reaction ngay lập tức
+          await reaction.users.remove(user.id).catch(() => {});
+        }
+      } catch (e) {}
+    }
+  }
 });
 
 client.on('messageCreate', async (message) => {
@@ -138,7 +168,7 @@ client.on('messageCreate', async (message) => {
     await message.delete().catch(() => {});
 
     let lastCreatedMessage = null;
-    const isFlash = durationMs < 3600000;
+    const isFlash = durationMs < 3600000; // Dưới 1 tiếng là Flash Giveaway
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
 
     for (let i = 0; i < giveawayCount; i++) {
@@ -153,7 +183,7 @@ client.on('messageCreate', async (message) => {
           })
           .setTitle(`🎉 ${prize}`)
           .setDescription(
-            `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
+            `> Hãy nhấn vào biểu tượng **${EMOJI_STRING}** bên dưới để tham gia ngay!\n\n` +
             `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
@@ -171,7 +201,7 @@ client.on('messageCreate', async (message) => {
       const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
       
       try {
-        await gaMessage.react(EMOJI_ID);
+        await gaMessage.react(EMOJI_ID_ONLY);
       } catch (e) {
         await gaMessage.react('🌙');
       }
@@ -193,7 +223,7 @@ client.on('messageCreate', async (message) => {
         const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
         if (!fetchedMsg) return;
 
-        const reaction = fetchedMsg.reactions.cache.find(r => r.emoji.id === EMOJI_ID) || fetchedMsg.reactions.cache.first();
+        const reaction = fetchedMsg.reactions.cache.find(r => r.emoji.id === EMOJI_ID_ONLY) || fetchedMsg.reactions.cache.first();
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
@@ -223,8 +253,11 @@ client.on('messageCreate', async (message) => {
           let baseEntries = 1;
           try {
             const member = await message.guild.members.fetch(userId);
-            for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
-              if (member.roles.cache.has(roleId)) baseEntries += extra;
+            // Chỉ tính bonus entries nếu là Giveaway trên 1 giờ
+            if (!isFlash) {
+              for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
+                if (member.roles.cache.has(roleId)) baseEntries += extra;
+              }
             }
           } catch (e) {}
 
@@ -263,17 +296,17 @@ client.on('messageCreate', async (message) => {
       }, durationMs);
     }
 
-    // --- BẢNG BONUS ENTRIES DÙNG KÝ TỰ ⃟ VÀ ĐÍNH KÈM GIF ---
-    if (lastCreatedMessage) {
+    // --- BẢNG BONUS ENTRIES DÍNH LIỀN VÀ CHỈ HIỆN KHI >= 1 GIỜ ---
+    if (lastCreatedMessage && !isFlash) {
       const noteEmbed = new EmbedBuilder()
         .setTitle('✨ **Bonus Entries**')
         .setDescription(
-          '<@&1393150909327999006> ⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟ `+1`\n' +
-          '<@&1393151668144574474> ⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟ `+2`\n' +
-          '<@&1393151139972644905> ⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟ `+3`\n' +
-          '<@&1393170229072367758> ⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟⃟ `+4`'
+          '<@&1393150909327999006> +1\n' +
+          '<@&1393151668144574474> +2\n' +
+          '<@&1393151139972644905> +3\n' +
+          '<@&1393170229072367758> +4'
         )
-        .setImage(BONUS_GIF) // Đưa GIF xuống bảng Bonus Entries
+        .setImage(BONUS_GIF)
         .setColor(0xFF69B4);
 
       await message.channel.send({ embeds: [noteEmbed] });
