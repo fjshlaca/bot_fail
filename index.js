@@ -1,4 +1,4 @@
-4const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
@@ -71,7 +71,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 3.0 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -92,7 +92,7 @@ client.on('messageCreate', async (message) => {
         .setDescription(
           `> \`z.ga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
           `• 🌐 **Mở cho tất cả mọi người:**\n` +
-          `  \`z.ga 1 30s 1 tỷ\`\n\n` +
+          `  \`z.ga none 1 30s 1 tỷ\`\n\n` +
           `• 📌 **Tag trực tiếp Role:**\n` +
           `  \`z.ga @Role 1 12h Nitro\``
         )
