@@ -107,21 +107,17 @@ client.on('messageCreate', async (message) => {
 
   // --- 1. LỆNH RANDOM ROLE (z.rdrole) ---
   if (command === 'rdrole') {
-    // Kiểm tra xem người dùng có Role yêu cầu hay không
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
       return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
     }
 
     try {
-      // Quay thưởng theo tỷ lệ
       const selectedRoleId = getRandomRoleByRate();
       
-      // Thêm Role trúng thưởng cho thành viên
       await message.member.roles.add(selectedRoleId).catch((err) => {
         console.error("Lỗi cấp Role:", err);
       });
 
-      // Tạo Embed thông báo kết quả
       const rdEmbed = new EmbedBuilder()
         .setAuthor({ 
           name: '🎲 VÒNG QUAY RANDOM ROLE', 
@@ -205,7 +201,7 @@ client.on('messageCreate', async (message) => {
         .setTitle(`🎁 Phần thưởng: ${prizeName}`)
         .setDescription(
           `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
-          `• <:zh_luom:1563529206430826527> **Người tổ chức:** <@${message.author.id}>\n` +
+          `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
           `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
         )
         .setColor(0x3498DB)
@@ -307,7 +303,7 @@ client.on('messageCreate', async (message) => {
           .setTitle(`🎉 ${prize}`)
           .setDescription(
             `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
-            `• <:zh_luom:1563529206430826527> **Người tổ chức:** <@${message.author.id}>\n` +
+            `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
@@ -404,7 +400,7 @@ client.on('messageCreate', async (message) => {
           .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
           .setDescription(
             `> Giveaway đã khép lại thành công!\n\n` +
-            `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+            `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🎉 **Người chiến thắng:** ${winnerMentions}`
           )
           .setColor(0xFF69B4);
@@ -416,7 +412,7 @@ client.on('messageCreate', async (message) => {
           .setTitle(`🎁 Phần thưởng: ${prize}`)
           .setDescription(
             `> Chúc mừng cậu chủ ${winnerMentions} đã may mắn bú đẫm giveaway!\n\n` +
-            `• 👑 **Người trao quà:** <@${message.author.id}>\n` +
+            `• <a:dans:1393177512242053140> **Người trao quà:** <@${message.author.id}>\n` +
             `• 🏆 **Người trúng giải:** ${winnerMentions}`
           )
           .setColor(0xFF69B4)
