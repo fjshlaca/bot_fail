@@ -21,16 +21,15 @@ const client = new Client({
 
 // --- CẤU HÌNH BONUS ENTRIES ---
 const ROLE_ENTRIES = {
-  '1393150909327999006': 1, // +1 entry
-  '1393151668144574474': 2, // +2 entries
-  '1393151139972644905': 3, // +3 entries
-  '1393170229072367758': 4  // +4 entries
+  '1393150909327999006': 1,
+  '1393151668144574474': 2,
+  '1393151139972644905': 3,
+  '1393170229072367758': 4
 };
 
 const PREFIX = 'z.';
-const EMOJI_GA = '🌙';
+const EMOJI_GA = '<:zh_meotukgian:1564668143597658185>1564668143597658185>';
 
-// --- HÀM TÍNH THỜI GIAN S, P, H, D ---
 function parseCustomDuration(str) {
   if (!str) return null;
   const regex = /(\d+)\s*([sphd])/gi;
@@ -68,7 +67,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.1 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 2.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -83,8 +82,7 @@ client.on('messageCreate', async (message) => {
         '❌ **HƯỚNG DẪN TẠO GIVEAWAY CHUẨN**\n' +
         '👉 Cú pháp: `z.ga <id_role_hoặc_none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>`\n\n' +
         '💡 **Ví dụ mở cho tất cả:** `z.ga none 1 30s 1 tỷ`\n' +
-        '💡 **Ví dụ cho Role cụ thể:** `z.ga 1393150909327999006 1 24h 1 tỷ`\n' +
-        '💡 **Ví dụ tag Role:** `z.ga @Cute 1 12h Nitro`'
+        '💡 **Ví dụ cho Role cụ thể:** `z.ga 1393150909327999006 1 24h 1 tỷ`'
       );
     }
 
@@ -95,7 +93,6 @@ client.on('messageCreate', async (message) => {
     let prize = '';
 
     let currentIndex = 0;
-
     const firstArg = args[0];
     const extractedId = firstArg.replace(/\D/g, '');
 
@@ -124,10 +121,10 @@ client.on('messageCreate', async (message) => {
     prize = args.slice(currentIndex).join(' ');
 
     if (!winnerCount || winnerCount < 1) {
-      return message.reply('❌ **Thiếu số lượng giải!** Ví dụ: `z.ga none 1 30s Nitro`');
+      return message.reply('❌ **Thiếu số lượng giải!**');
     }
     if (!durationMs) {
-      return message.reply('❌ **Thời gian không hợp lệ!** Ví dụ: `30s`, `15p`, `24h`, `1d`.');
+      return message.reply('❌ **Thời gian không hợp lệ!**');
     }
     if (!prize) {
       return message.reply('❌ **Chưa nhập nội dung giveaway!**');
@@ -136,8 +133,6 @@ client.on('messageCreate', async (message) => {
     await message.delete().catch(() => {});
 
     let lastCreatedMessage = null;
-
-    // KIỂM TRA ĐIỀU KIỆN TIÊU ĐỀ: Dưới 1 tiếng (3600000 ms) là FLASH GIVEAWAY
     const isFlash = durationMs < 3600000;
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
 
@@ -257,15 +252,15 @@ client.on('messageCreate', async (message) => {
       }, durationMs);
     }
 
-    // --- BẢNG BONUS ENTRIES CĂN THẲNG HÀNG SANG TRỌNG ---
+    // --- BẢNG BONUS ENTRIES CĂN CHỈNH KÝ TỰ THẲNG HÀNG ---
     if (lastCreatedMessage) {
       const noteEmbed = new EmbedBuilder()
         .setTitle('✨ **Bonus Entries**')
         .setDescription(
-          `<@&1393150909327999006>     **+1**\n` +
-          `<@&1393151668144574474>     **+2**\n` +
-          `<@&1393151139972644905>     **+3**\n` +
-          `<@&1393170229072367758>     **+4**`
+          '<@&1393150909327999006> `' + ' '.repeat(15) + '+1`\n' +
+          '<@&1393151668144574474> `' + ' '.repeat(13) + '+2`\n' +
+          '<@&1393151139972644905> `' + ' '.repeat(13) + '+3`\n' +
+          '<@&1393170229072367758> `' + ' '.repeat(12) + '+4`'
         )
         .setColor(0xFF69B4);
 
