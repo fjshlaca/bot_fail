@@ -30,10 +30,8 @@ const ROLE_ENTRIES = {
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
 
-// --- ĐƯỜNG DẪN GIF CHO BẢNG GIVEAWAY CHÍNH ---
+// GIF Trang trí
 const GA_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=&width=1280&height=193';
-
-// --- ĐƯỜNG DẪN GIF CHO BẢNG BONUS ENTRIES ---
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -73,7 +71,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.8 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.0 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -83,13 +81,25 @@ client.on('messageCreate', async (message) => {
   const command = args.shift().toLowerCase();
 
   if (command === 'ga') {
+    // --- 1. BẢNG HƯỚNG DẪN DẠNG EMBED ĐẸP MẮT KHI GÕ CHỈ MỖI Z.GA ---
     if (args.length === 0) {
-      return message.reply(
-        '❌ **HƯỚNG DẪN TẠO GIVEAWAY CHUẨN**\n' +
-        '👉 Cú pháp: `z.ga <id_role_hoặc_none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>`\n\n' +
-        '💡 **Ví dụ mở cho tất cả:** `z.ga none 1 30s 1 tỷ`\n' +
-        '💡 **Ví dụ cho Role cụ thể:** `z.ga 1393150909327999006 1 24h 1 tỷ`'
-      );
+      const helpEmbed = new EmbedBuilder()
+        .setAuthor({ 
+          name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', 
+          iconURL: client.user.displayAvatarURL() 
+        })
+        .setTitle('✨ Cách tạo GiveAway')
+        .setDescription(
+          `> \`z.ga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
+          `• 🌐 **Mở cho tất cả mọi người:**\n` +
+          `  \`z.ga 1 30s 1 tỷ\`\n\n` +
+          `• 📌 **Tag trực tiếp Role:**\n` +
+          `  \`z.ga @Role 1 12h Nitro\``
+        )
+        .setColor(0xFF69B4)
+        .setFooter({ text: 'Hệ thống Giveaway • Ver 3.0' });
+
+      return message.reply({ embeds: [helpEmbed] });
     }
 
     let targetRoleId = null;
@@ -127,10 +137,10 @@ client.on('messageCreate', async (message) => {
     prize = args.slice(currentIndex).join(' ');
 
     if (!winnerCount || winnerCount < 1) {
-      return message.reply('❌ **Thiếu số lượng giải!**');
+      return message.reply('❌ **Thiếu số lượng giải!** Vui lòng kiểm tra lại cú pháp.');
     }
     if (!durationMs) {
-      return message.reply('❌ **Thời gian không hợp lệ!**');
+      return message.reply('❌ **Thời gian không hợp lệ!** Dùng: `s`, `p`, `h`, `d`.');
     }
     if (!prize) {
       return message.reply('❌ **Chưa nhập nội dung giveaway!**');
@@ -162,7 +172,6 @@ client.on('messageCreate', async (message) => {
           )
           .setColor(0xFF69B4)
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-          // Đính kèm GIF vào dưới bảng Giveaway chính
           .setImage(GA_GIF)
           .setFooter({
             text: `⏰ Kết thúc lúc`,
@@ -184,7 +193,7 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- KHI GIVEAWAY KẾT THÚC ---
+      // --- KHI GA KẾT THÚC: BẢNG KẾT QUẢ SẼ LÀ BẢNG EMBED ĐẸP MẮT ---
       setTimeout(async () => {
         clearInterval(interval);
 
@@ -249,6 +258,7 @@ client.on('messageCreate', async (message) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
+        // Đổi màu bài gốc thành xám/kết thúc
         const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
           .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
           .setDescription(
@@ -259,7 +269,20 @@ client.on('messageCreate', async (message) => {
           .setColor(0xFF69B4);
 
         await fetchedMsg.edit({ embeds: [endEmbed] });
-        message.channel.send(`🎉 Chúc mừng cậu chủ ${winnerMentions} đã bú đẫm ga **${prize}** của <@${message.author.id}>!`);
+
+        // --- 2. GỬI THÊM BẢNG EMBED TỰ NỔ CHÚC MỪNG CHIẾN THẮNG ---
+        const winAnnounceEmbed = new EmbedBuilder()
+          .setAuthor({ name: '🎉 KẾT QUẢ GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
+          .setTitle(`🎁 Phần thưởng: ${prize}`)
+          .setDescription(
+            `> Chúc mừng cậu chủ ${winnerMentions} đã may mắn bú đẫm giveaway!\n\n` +
+            `• 👑 **Người trao quà:** <@${message.author.id}>\n` +
+            `• 🏆 **Người trúng giải:** ${winnerMentions}`
+          )
+          .setColor(0xFF69B4)
+          .setTimestamp();
+
+        message.channel.send({ embeds: [winAnnounceEmbed] });
       }, durationMs);
     }
 
@@ -273,7 +296,7 @@ client.on('messageCreate', async (message) => {
           '<@&1393151139972644905> +3\n' +
           '<@&1393170229072367758> +4'
         )
-        .setImage(BONUS_GIF) // Đính kèm GIF riêng cho bảng Bonus
+        .setImage(BONUS_GIF)
         .setColor(0xFF69B4);
 
       await message.channel.send({ embeds: [noteEmbed] });
