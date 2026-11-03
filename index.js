@@ -1,7 +1,5 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
 const app = express();
@@ -21,6 +19,7 @@ const client = new Client({
   ]
 });
 
+// --- CẤU HÌNH BONUS ENTRIES ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1,
   '1393151668144574474': 2,
@@ -30,41 +29,10 @@ const ROLE_ENTRIES = {
 
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
+
+// GIF Trang trí
 const GA_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=&width=1280&height=193';
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
-
-// --- HỆ THỐNG LƯU TRỮ FILE CONFIG (KHÔNG LO MẤT KHI RENDER RESTART) ---
-const CONFIG_FILE = path.join(__dirname, 'config.json');
-let serverCustomConfigs = {};
-
-if (fs.existsSync(CONFIG_FILE)) {
-  try {
-    serverCustomConfigs = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-  } catch (e) {
-    serverCustomConfigs = {};
-  }
-}
-
-function saveConfig() {
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverCustomConfigs, null, 2), 'utf8');
-}
-
-function getServerConfig(guildId) {
-  if (!serverCustomConfigs[guildId]) {
-    serverCustomConfigs[guildId] = {
-      enabled: true, // MẶC ĐỊNH BẬT TỰ ĐỘNG
-      categories: {
-        "Đang diễn ra": { message: null, embed: { title: null, description: null, color: 0xFF69B4, author: null, footer: null } },
-        "Đã kết thúc, có winner": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } },
-        "Đã kết thúc, không có winner": { message: null, embed: { title: null, description: null, color: 0xED4245 } },
-        "Công bố kết quả": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } },
-        "Reroll người thắng": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } }
-      }
-    };
-    saveConfig();
-  }
-  return serverCustomConfigs[guildId];
-}
 
 function parseCustomDuration(str) {
   if (!str) return null;
@@ -103,299 +71,104 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 3.4 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
-// --- INTERACTION HANDLER ---
-client.on('interactionCreate', async (interaction) => {
-  try {
-    if (!interaction.guild) return;
-    const config = getServerConfig(interaction.guild.id);
-
-    // 1. Bật/Tắt Custom Message
-    if (interaction.isButton() && interaction.customId === 'toggle_custom') {
-      config.enabled = !config.enabled;
-      saveConfig();
-      const stateStr = config.enabled ? 'BẬT' : 'TẮT';
-      
-      const embed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setDescription(
-          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\n` +
-          `Hãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
-        );
-      
-      return await interaction.update({ embeds: [embed] });
-    }
-
-    // 2. Select Menu Loại tin nhắn
-    if (interaction.isStringSelectMenu() && interaction.customId === 'select_category') {
-      const selectedCategory = interaction.values[0];
-      interaction.client.tempCategory = interaction.client.tempCategory || {};
-      interaction.client.tempCategory[interaction.user.id] = selectedCategory;
-
-      const embed = new EmbedBuilder()
-        .setTitle('Chỉnh sửa tin nhắn Giveaway')
-        .setDescription(`Bạn đang thực hiện chỉnh sửa phần **${selectedCategory}** của tin nhắn Giveaway.`)
-        .setColor(0x5865F2);
-
-      const rowSelect = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('select_action')
-          .setPlaceholder('Chọn cài đặt cần chỉnh sửa...')
-          .addOptions([
-            { label: 'Chỉnh sửa Nội dung Message', value: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
-            { label: 'Chỉnh sửa Embed', value: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
-            { label: 'Đặt lại Message', value: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
-            { label: 'Đặt lại Embed', value: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
-          ])
-      );
-
-      const rowBack = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_to_main').setLabel('Quay lại').setStyle(ButtonStyle.Primary)
-      );
-
-      return await interaction.update({ embeds: [embed], components: [rowSelect, rowBack] });
-    }
-
-    // 3. Quay lại Menu chính
-    if (interaction.isButton() && interaction.customId === 'back_to_main') {
-      const stateStr = config.enabled ? 'BẬT' : 'TẮT';
-      const embed = new EmbedBuilder()
-        .setTitle('Chỉnh sửa tin nhắn Giveaway')
-        .setDescription(
-          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\nHãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
-        )
-        .setColor(0x5865F2);
-
-      const rowBtn = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('toggle_custom').setLabel('Bật/Tắt Custom Message').setStyle(ButtonStyle.Primary)
-      );
-
-      const rowMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('select_category')
-          .setPlaceholder('Chọn loại tin nhắn giveaway cần sửa')
-          .addOptions([
-            { label: 'Đang diễn ra', value: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
-            { label: 'Đã kết thúc, có winner', value: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
-            { label: 'Đã kết thúc, không có winner', value: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
-            { label: 'Công bố kết quả', value: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
-            { label: 'Reroll người thắng', value: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
-          ])
-      );
-
-      return await interaction.update({ embeds: [embed], components: [rowBtn, rowMenu] });
-    }
-
-    // 4. Action Menu Select
-    if (interaction.isStringSelectMenu() && interaction.customId === 'select_action') {
-      const action = interaction.values[0];
-      const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
-
-      if (action === 'Chỉnh sửa Nội dung Message') {
-        const modal = new ModalBuilder().setCustomId('modal_edit_msg').setTitle('Nội dung');
-        const input = new TextInputBuilder()
-          .setCustomId('msg_content')
-          .setLabel('Nội dung của tin nhắn giveaway')
-          .setStyle(TextInputStyle.Paragraph)
-          .setValue(config.categories[category].message || '');
-        modal.addComponents(new ActionRowBuilder().addComponents(input));
-        return await interaction.showModal(modal);
-      } 
-      else if (action === 'Chỉnh sửa Embed') {
-        const embed = new EmbedBuilder()
-          .setTitle(`Chỉnh sửa Embed (${category})`)
-          .setDescription('Chọn thành phần Embed bên dưới để thay đổi tùy ý:')
-          .setColor(0x5865F2);
-
-        const row1 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('edit_author').setLabel('Đầu Embed').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('edit_title_content').setLabel('Tiêu đề & Nội dung').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('edit_footer').setLabel('Chân Embed').setStyle(ButtonStyle.Success)
-        );
-        const row2 = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId('edit_color').setLabel('Màu').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId('back_to_action').setLabel('Quay lại').setStyle(ButtonStyle.Primary)
-        );
-
-        return await interaction.update({ embeds: [embed], components: [row1, row2] });
-      }
-      else if (action.startsWith('Đặt lại')) {
-        config.categories[category] = { message: null, embed: { title: null, description: null, color: 0xFF69B4, author: null, footer: null } };
-        saveConfig();
-        return await interaction.reply({ content: `✅ **Thành công!** Đã reset cấu hình phần **${category}** về mặc định.`, ephemeral: true });
-      }
-    }
-
-    // 5. Quay lại Action Menu
-    if (interaction.isButton() && interaction.customId === 'back_to_action') {
-      const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
-      const embed = new EmbedBuilder()
-        .setTitle('Chỉnh sửa tin nhắn Giveaway')
-        .setDescription(`Bạn đang thực hiện chỉnh sửa phần **${category}** của tin nhắn Giveaway.`)
-        .setColor(0x5865F2);
-
-      const rowSelect = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('select_action')
-          .setPlaceholder('Chọn cài đặt cần chỉnh sửa...')
-          .addOptions([
-            { label: 'Chỉnh sửa Nội dung Message', value: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
-            { label: 'Chỉnh sửa Embed', value: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
-            { label: 'Đặt lại Message', value: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
-            { label: 'Đặt lại Embed', value: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
-          ])
-      );
-      const rowBack = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('back_to_main').setLabel('Quay lại').setStyle(ButtonStyle.Primary)
-      );
-      return await interaction.update({ embeds: [embed], components: [rowSelect, rowBack] });
-    }
-
-    // 6. Buttons Embed
-    if (interaction.isButton() && ['edit_author', 'edit_title_content', 'edit_footer', 'edit_color'].includes(interaction.customId)) {
-      const modal = new ModalBuilder();
-      const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
-      const currentEmbedData = config.categories[category].embed;
-
-      if (interaction.customId === 'edit_author') {
-        modal.setCustomId('modal_author').setTitle('Nhập Tác giả');
-        modal.addComponents(new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId('author_val').setLabel('Tác giả').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.author || '')
-        ));
-      } else if (interaction.customId === 'edit_title_content') {
-        modal.setCustomId('modal_title_content').setTitle('Thông tin chung');
-        modal.addComponents(
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('title_val').setLabel('Tiêu đề').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.title || '')
-          ),
-          new ActionRowBuilder().addComponents(
-            new TextInputBuilder().setCustomId('desc_val').setLabel('Nội dung').setStyle(TextInputStyle.Paragraph).setRequired(false).setValue(currentEmbedData.description || '')
-          )
-        );
-      } else if (interaction.customId === 'edit_footer') {
-        modal.setCustomId('modal_footer').setTitle('Chân trang Embed');
-        modal.addComponents(new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId('footer_val').setLabel('Văn bản chân trang').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.footer || '')
-        ));
-      } else if (interaction.customId === 'edit_color') {
-        modal.setCustomId('modal_color').setTitle('Màu sắc');
-        modal.addComponents(new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId('color_val').setLabel('Màu Hex (VD: #FF69B4)').setStyle(TextInputStyle.Short).setRequired(true).setValue('#' + (currentEmbedData.color || 0xFF69B4).toString(16)))
-        );
-      }
-      return await interaction.showModal(modal);
-    }
-
-    // 7. Modals Submit
-    if (interaction.isModalSubmit()) {
-      const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
-      
-      if (interaction.customId === 'modal_edit_msg') {
-        const val = interaction.fields.getTextInputValue('msg_content');
-        config.categories[category].message = val;
-        saveConfig();
-        return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Nội dung Message cho **${category}**:\n\`\`\`${val || '(Trống)'}\`\`\``, 
-          ephemeral: true 
-        });
-      } else if (interaction.customId === 'modal_author') {
-        const val = interaction.fields.getTextInputValue('author_val');
-        config.categories[category].embed.author = val;
-        saveConfig();
-        return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Tác giả cho **${category}** thành: **${val || 'Mặc định'}**`, 
-          ephemeral: true 
-        });
-      } else if (interaction.customId === 'modal_title_content') {
-        const t = interaction.fields.getTextInputValue('title_val');
-        const d = interaction.fields.getTextInputValue('desc_val');
-        config.categories[category].embed.title = t || null;
-        config.categories[category].embed.description = d || null;
-        saveConfig();
-        return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Tiêu đề & Nội dung Embed cho phần **${category}**!`, 
-          ephemeral: true 
-        });
-      } else if (interaction.customId === 'modal_footer') {
-        const val = interaction.fields.getTextInputValue('footer_val');
-        config.categories[category].embed.footer = val;
-        saveConfig();
-        return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Chân Embed thành: **${val || 'Mặc định'}**`, 
-          ephemeral: true 
-        });
-      } else if (interaction.customId === 'modal_color') {
-        const hexStr = interaction.fields.getTextInputValue('color_val').replace('#', '');
-        const colorInt = parseInt(hexStr, 16);
-        if (!isNaN(colorInt)) {
-          config.categories[category].embed.color = colorInt;
-          saveConfig();
-          return await interaction.reply({ 
-            content: `✅ **Thành công!** Đã cập nhật màu sắc Embed thành: **#${hexStr}**`, 
-            ephemeral: true 
-          });
-        } else {
-          return await interaction.reply({ 
-            content: `❌ **Thất bại!** Mã màu Hex không hợp lệ.`, 
-            ephemeral: true 
-          });
-        }
-      }
-    }
-  } catch (err) {
-    console.error("Lỗi xử lý Interaction:", err);
-  }
-});
-
-// --- LỆNH TEXT COMMANDS ---
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  if (command === 'customize') {
-    const config = getServerConfig(message.guild.id);
-    const stateStr = config.enabled ? 'BẬT' : 'TẮT';
+  // --- LỆNH REROLL (z.garr) ---
+  if (command === 'garr') {
+    if (!message.reference || !message.reference.messageId) {
+      return message.reply('❌ **Bạn phải reply (phản hồi) vào tin nhắn bài giveaway cần reroll rồi mới gõ `z.garr`!**');
+    }
 
-    const embed = new EmbedBuilder()
-      .setTitle('Chỉnh sửa tin nhắn Giveaway')
-      .setDescription(
-        `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\n` +
-        `Hãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
-      )
-      .setColor(0x5865F2);
+    try {
+      const targetMsg = await message.channel.messages.fetch(message.reference.messageId);
+      if (!targetMsg) {
+        return message.reply('❌ Không tìm thấy tin nhắn giveaway được reply!');
+      }
 
-    const rowBtn = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('toggle_custom').setLabel('Bật/Tắt Custom Message').setStyle(ButtonStyle.Primary)
-    );
+      await message.delete().catch(() => {});
 
-    const rowMenu = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('select_category')
-        .setPlaceholder('Chọn loại tin nhắn giveaway cần sửa')
-        .addOptions([
-          { label: 'Đang diễn ra', value: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
-          { label: 'Đã kết thúc, có winner', value: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
-          { label: 'Đã kết thúc, không có winner', value: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
-          { label: 'Công bố kết quả', value: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
-          { label: 'Reroll người thắng', value: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
-        ])
-    );
+      const reaction = targetMsg.reactions.cache.get(EMOJI_GA) || targetMsg.reactions.cache.first();
+      if (!reaction) {
+        return message.reply('❌ Không tìm thấy lượt tham gia nào ở bài giveaway này.');
+      }
 
-    return message.reply({ embeds: [embed], components: [rowBtn, rowMenu] });
+      let users = await reaction.users.fetch();
+      let validUsers = users.filter(u => !u.bot);
+
+      if (validUsers.size === 0) {
+        return message.reply('❌ Không có người chơi hợp lệ nào khác để reroll!');
+      }
+
+      let oldWinnersIds = [];
+      const embedDesc = targetMsg.embeds[0]?.description || '';
+      const mentionRegex = /<@(\d+)>/g;
+      let match;
+      while ((match = mentionRegex.exec(embedDesc)) !== null) {
+        oldWinnersIds.push(match[1]);
+      }
+
+      const availablePool = [];
+      for (const [userId] of validUsers) {
+        if (!oldWinnersIds.includes(userId)) {
+          availablePool.push(userId);
+        }
+      }
+
+      if (availablePool.length === 0) {
+        return message.reply('❌ Không còn người chơi nào khác ngoài những người đã trúng giải trước đó để reroll!');
+      }
+
+      const randomIndex = Math.floor(Math.random() * availablePool.length);
+      const newWinnerId = availablePool[randomIndex];
+      const newWinnerMention = `<@${newWinnerId}>`;
+
+      const oldTitle = targetMsg.embeds[0]?.title || 'Giveaway';
+      const prizeName = oldTitle.replace(/^[🏆❌🎉\s\[ĐÃ KẾT THÚC\]]+/g, '');
+
+      const rerollEmbed = new EmbedBuilder()
+        .setAuthor({ name: '🔄 REROLL NGƯỜI THẮNG', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setTitle(`🎁 Phần thưởng: ${prizeName}`)
+        .setDescription(
+          `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
+          `• 👑 **Người thực hiện:** <@${message.author.id}>\n` +
+          `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
+        )
+        .setColor(0x3498DB)
+        .setTimestamp();
+
+      return message.channel.send({
+        content: `🔄 **REROLL!** Chúc mừng ${newWinnerMention} đã may mắn nhận được **${prizeName}** thay thế!`,
+        embeds: [rerollEmbed]
+      });
+
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ Đã xảy ra lỗi khi thực hiện reroll!');
+    }
   }
 
+  // --- LỆNH GA (GIVEAWAY) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
-        .setAuthor({ name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ 
+          name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', 
+          iconURL: client.user.displayAvatarURL() 
+        })
         .setTitle('✨ Cách tạo GiveAway')
         .setDescription(
           `> \`z.ga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
-          `• 🌐 **Mở cho tất cả mọi người:**\n  \`z.ga none 1 30s 1 tỷ\`\n\n` +
-          `• 📌 **Tag trực tiếp Role:**\n  \`z.ga @Role 1 12h Nitro\``
+          `• 🌐 **Mở cho tất cả mọi người:**\n` +
+          `  \`z.ga none 1 30s 1 tỷ\`\n\n` +
+          `• 📌 **Tag trực tiếp Role:**\n` +
+          `  \`z.ga @Role 1 12h Nitro\``
         )
         .setColor(0xFF69B4)
         .setFooter({ text: 'Hệ thống Giveaway • Emc4' });
@@ -452,60 +225,36 @@ client.on('messageCreate', async (message) => {
     let lastCreatedMessage = null;
     const isFlash = durationMs < 3600000;
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
-    
-    const serverConfig = getServerConfig(message.guild.id);
-    const ongoingConfig = serverConfig.enabled ? serverConfig.categories["Đang diễn ra"] : null;
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
 
       const buildEmbed = (msRemaining) => {
-        const customEmbed = ongoingConfig?.embed || {};
-        
-        let finalTitle = `🎉 ${prize}`;
-        if (customEmbed.title) {
-          finalTitle = customEmbed.title.replace(/\{giveaway_prize\}/g, prize);
-        }
-
-        let finalDesc = `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
-                        `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
-                        `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
-                        `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
-                        `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``;
-        
-        if (customEmbed.description) {
-          finalDesc = customEmbed.description
-            .replace(/\{giveaway_prize\}/g, prize)
-            .replace(/\{giveaway_host\}/g, `<@${message.author.id}>`)
-            .replace(/\{giveaway_duration\}/g, formatTimeLeft(durationMs))
-            .replace(/\{giveaway_remaining\}/g, formatTimeLeft(msRemaining))
-            .replace(/\{giveaway_entrants\}/g, roleDisplay);
-        }
-
-        const embed = new EmbedBuilder()
+        return new EmbedBuilder()
           .setAuthor({ 
-            name: customEmbed.author || headerTitle, 
+            name: headerTitle, 
             iconURL: message.guild.iconURL({ dynamic: true }) 
           })
-          .setTitle(finalTitle)
-          .setDescription(finalDesc)
-          .setColor(customEmbed.color !== undefined ? customEmbed.color : 0xFF69B4)
+          .setTitle(`🎉 ${prize}`)
+          .setDescription(
+            `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
+            `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
+            `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
+            `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
+            `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
+          )
+          .setColor(0xFF69B4)
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
           .setImage(GA_GIF)
           .setFooter({
-            text: customEmbed.footer || `⏰ Kết thúc lúc`,
+            text: `⏰ Kết thúc lúc`,
             iconURL: client.user.displayAvatarURL()
           })
           .setTimestamp(endTime);
-
-        return embed;
       };
 
-      const customMsgContent = ongoingConfig?.message;
-      const contentPayload = customMsgContent ? { content: customMsgContent, embeds: [buildEmbed(durationMs)] } : { embeds: [buildEmbed(durationMs)] };
-
-      const gaMessage = await message.channel.send(contentPayload);
+      const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
       await gaMessage.react(EMOJI_GA).catch(() => {});
       lastCreatedMessage = gaMessage;
 
@@ -514,8 +263,7 @@ client.on('messageCreate', async (message) => {
         if (remaining <= 0) {
           clearInterval(interval);
         } else {
-          const editPayload = customMsgContent ? { content: customMsgContent, embeds: [buildEmbed(remaining)] } : { embeds: [buildEmbed(remaining)] };
-          await gaMessage.edit(editPayload).catch(() => clearInterval(interval));
+          await gaMessage.edit({ embeds: [buildEmbed(remaining)] }).catch(() => clearInterval(interval));
         }
       }, 5000);
 
@@ -548,8 +296,7 @@ client.on('messageCreate', async (message) => {
             .setTitle(`❌ [ĐÃ KẾT THÚC] ${prize}`)
             .setDescription(`> Không có người chơi hợp lệ nào tham gia giveaway này!`)
             .setColor(0xED4245);
-          const finalEditContent = customMsgContent ? { content: customMsgContent, embeds: [endEmbed] } : { embeds: [endEmbed] };
-          return fetchedMsg.edit(finalEditContent);
+          return fetchedMsg.edit({ embeds: [endEmbed] });
         }
 
         const pool = [];
@@ -594,8 +341,7 @@ client.on('messageCreate', async (message) => {
           )
           .setColor(0xFF69B4);
 
-        const finalEditContent = customMsgContent ? { content: customMsgContent, embeds: [endEmbed] } : { embeds: [endEmbed] };
-        await fetchedMsg.edit(finalEditContent);
+        await fetchedMsg.edit({ embeds: [endEmbed] });
 
         const winAnnounceEmbed = new EmbedBuilder()
           .setAuthor({ name: '🎉 KẾT QUẢ GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
