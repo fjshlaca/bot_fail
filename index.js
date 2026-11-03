@@ -27,6 +27,31 @@ const ROLE_ENTRIES = {
   '1393170229072367758': 4
 };
 
+// --- CẤU HÌNH GACHA RANDOM ROLE (z.rdrole) ---
+const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
+
+const RANDOM_ROLES_POOL = [
+  { id: '1393150502157680761', weight: 90, name: 'Cấp 1 (90%)' },
+  { id: '1393150909327999006', weight: 5,  name: 'Cấp 2 (5%)' },
+  { id: '1393151139972644905', weight: 3,  name: 'Cấp 3 (3%)' },
+  { id: '1393151668144574474', weight: 1,  name: 'Cấp 4 (1%)' },
+  { id: '1393170229072367758', weight: 1,  name: 'Cấp 5 (1%)' }
+];
+
+// Hàm quay số ngẫu nhiên theo tỷ lệ trọng số (Weight)
+function getRandomRoleByRate() {
+  const rand = Math.random() * 100; // Quay số từ 0 - 100
+  let cumulative = 0;
+
+  for (const roleObj of RANDOM_ROLES_POOL) {
+    cumulative += roleObj.weight;
+    if (rand < cumulative) {
+      return roleObj.id;
+    }
+  }
+  return RANDOM_ROLES_POOL[0].id;
+}
+
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
 
@@ -71,7 +96,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 3.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.5 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -80,7 +105,50 @@ client.on('messageCreate', async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // --- LỆNH REROLL (z.garr) ---
+  // --- 1. LỆNH RANDOM ROLE (z.rdrole) ---
+  if (command === 'rdrole') {
+    // Kiểm tra xem người dùng có Role yêu cầu hay không
+    if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
+      return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
+    }
+
+    try {
+      // Quay thưởng theo tỷ lệ
+      const selectedRoleId = getRandomRoleByRate();
+      
+      // Thêm Role trúng thưởng cho thành viên
+      await message.member.roles.add(selectedRoleId).catch((err) => {
+        console.error("Lỗi cấp Role:", err);
+      });
+
+      // Tạo Embed thông báo kết quả
+      const rdEmbed = new EmbedBuilder()
+        .setAuthor({ 
+          name: '🎲 VÒNG QUAY RANDOM ROLE', 
+          iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+        })
+        .setTitle('🎉 Chúc Mừng Bạn Đã Trúng Role!')
+        .setDescription(
+          `> Người chơi <@${message.author.id}> vừa thực hiện quay thành công!\n\n` +
+          `• 🏆 **Role nhận được:** <@&${selectedRoleId}>\n` +
+          `• ⚙️ **Trạng thái:** Đã tự động thêm vào hồ sơ của bạn.`
+        )
+        .setColor(0x9B59B6)
+        .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
+        .setTimestamp();
+
+      return message.channel.send({
+        content: `🎉 Chúc mừng <@${message.author.id}> đã nhân phẩm quay ra Role <@&${selectedRoleId}>!`,
+        embeds: [rdEmbed]
+      });
+
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ Đã xảy ra lỗi trong quá trình Random Role, vui lòng báo Admin kiểm tra quyền của Bot!');
+    }
+  }
+
+  // --- 2. LỆNH REROLL GIVEAWAY (z.garr) ---
   if (command === 'garr') {
     if (!message.reference || !message.reference.messageId) {
       return message.reply('❌ **Bạn phải reply (phản hồi) vào tin nhắn bài giveaway cần reroll rồi mới gõ `z.garr`!**');
@@ -154,7 +222,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- LỆNH GA (GIVEAWAY) ---
+  // --- 3. LỆNH GA (GIVEAWAY) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -355,7 +423,7 @@ client.on('messageCreate', async (message) => {
           .setTimestamp();
 
         message.channel.send({ 
-          content: `🎉 Chúc mừng ${winnerMentions} đã trúng **${prize}** của <@${message.author.id}>!`, 
+          content: `🎉 Chúc mừng ${winnerMentions} me đã trúng **${prize}** của <@${message.author.id}>!`, 
           embeds: [winAnnounceEmbed] 
         });
       }, durationMs);
