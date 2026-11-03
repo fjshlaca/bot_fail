@@ -205,7 +205,7 @@ client.on('messageCreate', async (message) => {
         .setTitle(`🎁 Phần thưởng: ${prizeName}`)
         .setDescription(
           `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
-          `• 👑 **Người thực hiện:** <@${message.author.id}>\n` +
+          `• <:zh_luom:1563529206430826527> **Người tổ chức:** <@${message.author.id}>\n` +
           `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
         )
         .setColor(0x3498DB)
