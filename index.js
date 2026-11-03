@@ -19,7 +19,7 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH BONUS ENTRIES CHUẨN CỦA MDUC ---
+// --- CẤU HÌNH BONUS ENTRIES ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1, // +1 entry
   '1393151668144574474': 2, // +2 entries
@@ -28,7 +28,7 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
-const EMOJI_GA = '🌙'; // Hoặc dán mã custom emoji dạng <:ten:ID>
+const EMOJI_GA = '🌙';
 
 // --- HÀM TÍNH THỜI GIAN S, P, H, D ---
 function parseCustomDuration(str) {
@@ -68,7 +68,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.0 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 2.1 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -96,7 +96,6 @@ client.on('messageCreate', async (message) => {
 
     let currentIndex = 0;
 
-    // 1. Kiểm tra Tham số 1 (Role requirement)
     const firstArg = args[0];
     const extractedId = firstArg.replace(/\D/g, '');
 
@@ -107,28 +106,23 @@ client.on('messageCreate', async (message) => {
       currentIndex = 1;
     }
 
-    // 2. Lấy số lượng giải
     if (args[currentIndex] && !isNaN(parseInt(args[currentIndex]))) {
       winnerCount = parseInt(args[currentIndex]);
       currentIndex++;
     }
 
-    // 3. Lấy thời gian
     if (args[currentIndex]) {
       durationMs = parseCustomDuration(args[currentIndex]);
       if (durationMs) currentIndex++;
     }
 
-    // 4. Lấy số lượng GA tạo hàng loạt (nếu có)
     if (args[currentIndex] && !isNaN(parseInt(args[currentIndex]))) {
       giveawayCount = parseInt(args[currentIndex]);
       currentIndex++;
     }
 
-    // 5. Phần còn lại là Nội dung GA
     prize = args.slice(currentIndex).join(' ');
 
-    // KIỂM TRA LỖI VÀ BÁO CỤ THỂ
     if (!winnerCount || winnerCount < 1) {
       return message.reply('❌ **Thiếu số lượng giải!** Ví dụ: `z.ga none 1 30s Nitro`');
     }
@@ -143,6 +137,10 @@ client.on('messageCreate', async (message) => {
 
     let lastCreatedMessage = null;
 
+    // KIỂM TRA ĐIỀU KIỆN TIÊU ĐỀ: Dưới 1 tiếng (3600000 ms) là FLASH GIVEAWAY
+    const isFlash = durationMs < 3600000;
+    const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
+
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
@@ -150,7 +148,7 @@ client.on('messageCreate', async (message) => {
       const buildEmbed = (msRemaining) => {
         return new EmbedBuilder()
           .setAuthor({ 
-            name: '🎁 HỆ THỐNG GIVEAWAY', 
+            name: headerTitle, 
             iconURL: message.guild.iconURL({ dynamic: true }) 
           })
           .setTitle(`🎉 ${prize}`)
@@ -161,7 +159,7 @@ client.on('messageCreate', async (message) => {
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
-          .setColor(0xFF69B4) // Viền màu hồng hot pink
+          .setColor(0xFF69B4)
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
           .setFooter({
             text: `⏰ Kết thúc lúc`,
@@ -193,7 +191,6 @@ client.on('messageCreate', async (message) => {
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
-        // Lọc người chơi theo Role yêu cầu
         if (targetRoleId) {
           const filteredMap = new Map();
           for (const [userId, userObj] of validUsers) {
@@ -215,7 +212,6 @@ client.on('messageCreate', async (message) => {
           return fetchedMsg.edit({ embeds: [endEmbed] });
         }
 
-        // Tính Bonus Entries
         const pool = [];
         for (const [userId] of validUsers) {
           let baseEntries = 1;
@@ -261,15 +257,15 @@ client.on('messageCreate', async (message) => {
       }, durationMs);
     }
 
-    // --- GỬI BẢNG CHÚ THÍCH ENTRIES DƯỚI BÀI CUỐI CÙNG ---
+    // --- BẢNG BONUS ENTRIES CĂN THẲNG HÀNG SANG TRỌNG ---
     if (lastCreatedMessage) {
       const noteEmbed = new EmbedBuilder()
-        .setTitle('✨ **Entries**')
+        .setTitle('✨ **Bonus Entries**')
         .setDescription(
-          `<@&1393150909327999006> **+1**\n` +
-          `<@&1393151668144574474> **+2**\n` +
-          `<@&1393151139972644905> **+3**\n` +
-          `<@&1393170229072367758> **+4**`
+          `<@&1393150909327999006>     **+1**\n` +
+          `<@&1393151668144574474>     **+2**\n` +
+          `<@&1393151139972644905>     **+3**\n` +
+          `<@&1393170229072367758>     **+4**`
         )
         .setColor(0xFF69B4);
 
