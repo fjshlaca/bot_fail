@@ -28,11 +28,12 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
+const EMOJI_GA = '🎁';
 
-// Dùng emoji chuẩn hiển thị rõ nét
-const EMOJI_DISPLAY = '<:zh_meotukgian:1564668143597658185>';
-const EMOJI_ID_ONLY = '1564668143597658185';
+// --- ĐƯỜNG DẪN GIF CHO BẢNG GIVEAWAY CHÍNH ---
+const GA_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=&width=1280&height=193';
 
+// --- ĐƯỜNG DẪN GIF CHO BẢNG BONUS ENTRIES ---
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -72,7 +73,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.6 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 2.8 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -138,7 +139,7 @@ client.on('messageCreate', async (message) => {
     await message.delete().catch(() => {});
 
     let lastCreatedMessage = null;
-    const isFlash = durationMs < 3600000; // Dưới 1 tiếng là Flash Giveaway
+    const isFlash = durationMs < 3600000;
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
 
     for (let i = 0; i < giveawayCount; i++) {
@@ -153,7 +154,7 @@ client.on('messageCreate', async (message) => {
           })
           .setTitle(`🎉 ${prize}`)
           .setDescription(
-            `> Hãy nhấn vào biểu tượng **${EMOJI_DISPLAY}** bên dưới để tham gia ngay!\n\n` +
+            `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
             `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
@@ -161,6 +162,8 @@ client.on('messageCreate', async (message) => {
           )
           .setColor(0xFF69B4)
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+          // Đính kèm GIF vào dưới bảng Giveaway chính
+          .setImage(GA_GIF)
           .setFooter({
             text: `⏰ Kết thúc lúc`,
             iconURL: client.user.displayAvatarURL()
@@ -169,14 +172,7 @@ client.on('messageCreate', async (message) => {
       };
 
       const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
-      
-      try {
-        await gaMessage.react(EMOJI_ID_ONLY);
-      } catch (e) {
-        // Fallback an toàn nếu bot thiếu quyền dùng emoji ngoại bộ
-        await gaMessage.react('🎁').catch(() => {});
-      }
-
+      await gaMessage.react(EMOJI_GA).catch(() => {});
       lastCreatedMessage = gaMessage;
 
       const interval = setInterval(async () => {
@@ -188,19 +184,17 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- KHI GIVEAWAY KẾT THÚC: LỌC BỎ NGƯỜI KHÔNG CÓ ROLE ---
+      // --- KHI GIVEAWAY KẾT THÚC ---
       setTimeout(async () => {
         clearInterval(interval);
 
         const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
         if (!fetchedMsg) return;
 
-        // Tìm reaction chính xác theo ID hoặc lấy reaction đầu tiên
-        const reaction = fetchedMsg.reactions.cache.find(r => r.emoji.id === EMOJI_ID_ONLY) || fetchedMsg.reactions.cache.first();
+        const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA) || fetchedMsg.reactions.cache.first();
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
-        // Lọc cực kỳ nghiêm ngặt: User bắt buộc phải có đúng Role yêu cầu mới được tính hợp lệ
         if (targetRoleId) {
           const filteredMap = new Map();
           for (const [userId, userObj] of validUsers) {
@@ -227,7 +221,6 @@ client.on('messageCreate', async (message) => {
           let baseEntries = 1;
           try {
             const member = await message.guild.members.fetch(userId);
-            // Chỉ tính bonus entries nếu không phải Flash Giveaway (>= 1 giờ)
             if (!isFlash) {
               for (const [roleId, extra] of Object.entries(ROLE_ENTRIES)) {
                 if (member.roles.cache.has(roleId)) baseEntries += extra;
@@ -270,7 +263,7 @@ client.on('messageCreate', async (message) => {
       }, durationMs);
     }
 
-    // --- BẢNG BONUS ENTRIES DÍNH LIỀN VÀ CHỈ HIỆN KHI >= 1 GIỜ ---
+    // --- BẢNG BONUS ENTRIES (CHỈ HIỆN KHI GA >= 1 GIỜ) ---
     if (lastCreatedMessage && !isFlash) {
       const noteEmbed = new EmbedBuilder()
         .setTitle('✨ **Bonus Entries**')
@@ -280,7 +273,7 @@ client.on('messageCreate', async (message) => {
           '<@&1393151139972644905> +3\n' +
           '<@&1393170229072367758> +4'
         )
-        .setImage(BONUS_GIF)
+        .setImage(BONUS_GIF) // Đính kèm GIF riêng cho bảng Bonus
         .setColor(0xFF69B4);
 
       await message.channel.send({ embeds: [noteEmbed] });
