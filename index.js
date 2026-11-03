@@ -1,5 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
 const app = express();
@@ -19,7 +21,6 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH BONUS ENTRIES ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1,
   '1393151668144574474': 2,
@@ -29,18 +30,29 @@ const ROLE_ENTRIES = {
 
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
-
-// GIF Trang trí
 const GA_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=&width=1280&height=193';
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
-// --- HỆ THỐNG LƯU TRỮ CUSTOM CONFIG CHO TỪNG SERVER ---
-const serverCustomConfigs = new Map();
+// --- HỆ THỐNG LƯU TRỮ FILE CONFIG (KHÔNG LO MẤT KHI RENDER RESTART) ---
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+let serverCustomConfigs = {};
+
+if (fs.existsSync(CONFIG_FILE)) {
+  try {
+    serverCustomConfigs = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+  } catch (e) {
+    serverCustomConfigs = {};
+  }
+}
+
+function saveConfig() {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(serverCustomConfigs, null, 2), 'utf8');
+}
 
 function getServerConfig(guildId) {
-  if (!serverCustomConfigs.has(guildId)) {
-    serverCustomConfigs.set(guildId, {
-      enabled: false,
+  if (!serverCustomConfigs[guildId]) {
+    serverCustomConfigs[guildId] = {
+      enabled: true, // MẶC ĐỊNH BẬT TỰ ĐỘNG
       categories: {
         "Đang diễn ra": { message: null, embed: { title: null, description: null, color: 0xFF69B4, author: null, footer: null } },
         "Đã kết thúc, có winner": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } },
@@ -48,9 +60,10 @@ function getServerConfig(guildId) {
         "Công bố kết quả": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } },
         "Reroll người thắng": { message: null, embed: { title: null, description: null, color: 0xFF69B4 } }
       }
-    });
+    };
+    saveConfig();
   }
-  return serverCustomConfigs.get(guildId);
+  return serverCustomConfigs[guildId];
 }
 
 function parseCustomDuration(str) {
@@ -90,18 +103,19 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 3.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.4 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
-// --- XỬ LÝ NÚT BẤM, MENU VÀ MODAL TƯƠNG TÁC ---
+// --- INTERACTION HANDLER ---
 client.on('interactionCreate', async (interaction) => {
   try {
     if (!interaction.guild) return;
     const config = getServerConfig(interaction.guild.id);
 
-    // 1. Nút Bật/Tắt Custom Message
+    // 1. Bật/Tắt Custom Message
     if (interaction.isButton() && interaction.customId === 'toggle_custom') {
       config.enabled = !config.enabled;
+      saveConfig();
       const stateStr = config.enabled ? 'BẬT' : 'TẮT';
       
       const embed = EmbedBuilder.from(interaction.message.embeds[0])
@@ -113,7 +127,7 @@ client.on('interactionCreate', async (interaction) => {
       return await interaction.update({ embeds: [embed] });
     }
 
-    // 2. Chọn loại tin nhắn giveaway (Select Menu chính)
+    // 2. Select Menu Loại tin nhắn
     if (interaction.isStringSelectMenu() && interaction.customId === 'select_category') {
       const selectedCategory = interaction.values[0];
       interaction.client.tempCategory = interaction.client.tempCategory || {};
@@ -149,8 +163,7 @@ client.on('interactionCreate', async (interaction) => {
       const embed = new EmbedBuilder()
         .setTitle('Chỉnh sửa tin nhắn Giveaway')
         .setDescription(
-          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\n` +
-          `Hãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
+          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\nHãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
         )
         .setColor(0x5865F2);
 
@@ -174,7 +187,7 @@ client.on('interactionCreate', async (interaction) => {
       return await interaction.update({ embeds: [embed], components: [rowBtn, rowMenu] });
     }
 
-    // 4. Chọn hành động sửa Message hoặc Embed
+    // 4. Action Menu Select
     if (interaction.isStringSelectMenu() && interaction.customId === 'select_action') {
       const action = interaction.values[0];
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
@@ -209,11 +222,12 @@ client.on('interactionCreate', async (interaction) => {
       }
       else if (action.startsWith('Đặt lại')) {
         config.categories[category] = { message: null, embed: { title: null, description: null, color: 0xFF69B4, author: null, footer: null } };
+        saveConfig();
         return await interaction.reply({ content: `✅ **Thành công!** Đã reset cấu hình phần **${category}** về mặc định.`, ephemeral: true });
       }
     }
 
-    // 5. Quay lại Menu Hành Động
+    // 5. Quay lại Action Menu
     if (interaction.isButton() && interaction.customId === 'back_to_action') {
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
       const embed = new EmbedBuilder()
@@ -238,7 +252,7 @@ client.on('interactionCreate', async (interaction) => {
       return await interaction.update({ embeds: [embed], components: [rowSelect, rowBack] });
     }
 
-    // 6. Mở Modal nhập liệu cho Embed
+    // 6. Buttons Embed
     if (interaction.isButton() && ['edit_author', 'edit_title_content', 'edit_footer', 'edit_color'].includes(interaction.customId)) {
       const modal = new ModalBuilder();
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
@@ -273,13 +287,14 @@ client.on('interactionCreate', async (interaction) => {
       return await interaction.showModal(modal);
     }
 
-    // 7. Nhận dữ liệu Modal Submit và Báo cáo kết quả chi tiết
+    // 7. Modals Submit
     if (interaction.isModalSubmit()) {
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
       
       if (interaction.customId === 'modal_edit_msg') {
         const val = interaction.fields.getTextInputValue('msg_content');
         config.categories[category].message = val;
+        saveConfig();
         return await interaction.reply({ 
           content: `✅ **Thành công!** Đã cập nhật Nội dung Message cho **${category}**:\n\`\`\`${val || '(Trống)'}\`\`\``, 
           ephemeral: true 
@@ -287,8 +302,9 @@ client.on('interactionCreate', async (interaction) => {
       } else if (interaction.customId === 'modal_author') {
         const val = interaction.fields.getTextInputValue('author_val');
         config.categories[category].embed.author = val;
+        saveConfig();
         return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Tác giả (Author) cho **${category}** thành: **${val || 'Mặc định'}**`, 
+          content: `✅ **Thành công!** Đã cập nhật Tác giả cho **${category}** thành: **${val || 'Mặc định'}**`, 
           ephemeral: true 
         });
       } else if (interaction.customId === 'modal_title_content') {
@@ -296,6 +312,7 @@ client.on('interactionCreate', async (interaction) => {
         const d = interaction.fields.getTextInputValue('desc_val');
         config.categories[category].embed.title = t || null;
         config.categories[category].embed.description = d || null;
+        saveConfig();
         return await interaction.reply({ 
           content: `✅ **Thành công!** Đã cập nhật Tiêu đề & Nội dung Embed cho phần **${category}**!`, 
           ephemeral: true 
@@ -303,8 +320,9 @@ client.on('interactionCreate', async (interaction) => {
       } else if (interaction.customId === 'modal_footer') {
         const val = interaction.fields.getTextInputValue('footer_val');
         config.categories[category].embed.footer = val;
+        saveConfig();
         return await interaction.reply({ 
-          content: `✅ **Thành công!** Đã cập nhật Chân Embed (Footer) thành: **${val || 'Mặc định'}**`, 
+          content: `✅ **Thành công!** Đã cập nhật Chân Embed thành: **${val || 'Mặc định'}**`, 
           ephemeral: true 
         });
       } else if (interaction.customId === 'modal_color') {
@@ -312,13 +330,14 @@ client.on('interactionCreate', async (interaction) => {
         const colorInt = parseInt(hexStr, 16);
         if (!isNaN(colorInt)) {
           config.categories[category].embed.color = colorInt;
+          saveConfig();
           return await interaction.reply({ 
             content: `✅ **Thành công!** Đã cập nhật màu sắc Embed thành: **#${hexStr}**`, 
             ephemeral: true 
           });
         } else {
           return await interaction.reply({ 
-            content: `❌ **Thất bại!** Mã màu Hex không hợp lệ (VD hợp lệ: \`#FF69B4\`).`, 
+            content: `❌ **Thất bại!** Mã màu Hex không hợp lệ.`, 
             ephemeral: true 
           });
         }
@@ -329,14 +348,13 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// --- LỆNH BOT DẠNG TEXT (z.customize & z.ga) ---
+// --- LỆNH TEXT COMMANDS ---
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // 1. LỆNH CUSTOMIZE
   if (command === 'customize') {
     const config = getServerConfig(message.guild.id);
     const stateStr = config.enabled ? 'BẬT' : 'TẮT';
@@ -369,7 +387,6 @@ client.on('messageCreate', async (message) => {
     return message.reply({ embeds: [embed], components: [rowBtn, rowMenu] });
   }
 
-  // 2. LỆNH GA (GIVEAWAY)
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -436,9 +453,7 @@ client.on('messageCreate', async (message) => {
     const isFlash = durationMs < 3600000;
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
     
-    // --- LẤY CẤU HÌNH TỪ SERVER ---
     const serverConfig = getServerConfig(message.guild.id);
-    // Chỉ áp dụng custom khi trạng thái custom được BẬT
     const ongoingConfig = serverConfig.enabled ? serverConfig.categories["Đang diễn ra"] : null;
 
     for (let i = 0; i < giveawayCount; i++) {
