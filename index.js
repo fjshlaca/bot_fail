@@ -105,7 +105,10 @@ client.on('interactionCreate', async (interaction) => {
       const stateStr = config.enabled ? 'BẬT' : 'TẮT';
       
       const embed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setDescription(`Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\nHãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`);
+        .setDescription(
+          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\n` +
+          `Hãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
+        );
       
       return await interaction.update({ embeds: [embed] });
     }
@@ -145,7 +148,10 @@ client.on('interactionCreate', async (interaction) => {
       const stateStr = config.enabled ? 'BẬT' : 'TẮT';
       const embed = new EmbedBuilder()
         .setTitle('Chỉnh sửa tin nhắn Giveaway')
-        .setDescription(`Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\nHãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`)
+        .setDescription(
+          `Bạn đang thực hiện custom message cho các giveaway.\nServer hiện đang **${stateStr}** custom message.\n\n` +
+          `Hãy chọn phần tin nhắn giveaway bạn muốn chỉnh sửa, hoặc bật/tắt custom message cho giveaway ở dưới:`
+        )
         .setColor(0x5865F2);
 
       const rowBtn = new ActionRowBuilder().addComponents(
@@ -179,7 +185,7 @@ client.on('interactionCreate', async (interaction) => {
           .setCustomId('msg_content')
           .setLabel('Nội dung của tin nhắn giveaway')
           .setStyle(TextInputStyle.Paragraph)
-          .setValue(config.categories[category].message || '🎉 **NEW GIVEAWAY** 🎉');
+          .setValue(config.categories[category].message || '');
         modal.addComponents(new ActionRowBuilder().addComponents(input));
         return await interaction.showModal(modal);
       } 
@@ -203,7 +209,7 @@ client.on('interactionCreate', async (interaction) => {
       }
       else if (action.startsWith('Đặt lại')) {
         config.categories[category] = { message: null, embed: { title: null, description: null, color: 0xFF69B4, author: null, footer: null } };
-        return await interaction.reply({ content: `✅ Đã reset cài đặt phần **${category}** về mặc định!`, ephemeral: true });
+        return await interaction.reply({ content: `✅ **Thành công!** Đã reset cấu hình phần **${category}** về mặc định.`, ephemeral: true });
       }
     }
 
@@ -236,53 +242,85 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton() && ['edit_author', 'edit_title_content', 'edit_footer', 'edit_color'].includes(interaction.customId)) {
       const modal = new ModalBuilder();
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
+      const currentEmbedData = config.categories[category].embed;
 
       if (interaction.customId === 'edit_author') {
         modal.setCustomId('modal_author').setTitle('Nhập Tác giả');
-        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('author_val').setLabel('Tác giả').setStyle(TextInputStyle.Short).setRequired(false)));
+        modal.addComponents(new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId('author_val').setLabel('Tác giả').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.author || '')
+        ));
       } else if (interaction.customId === 'edit_title_content') {
         modal.setCustomId('modal_title_content').setTitle('Thông tin chung');
         modal.addComponents(
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('title_val').setLabel('Tiêu đề').setStyle(TextInputStyle.Short).setRequired(false)),
-          new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('desc_val').setLabel('Nội dung').setStyle(TextInputStyle.Paragraph).setRequired(false))
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId('title_val').setLabel('Tiêu đề').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.title || '')
+          ),
+          new ActionRowBuilder().addComponents(
+            new TextInputBuilder().setCustomId('desc_val').setLabel('Nội dung').setStyle(TextInputStyle.Paragraph).setRequired(false).setValue(currentEmbedData.description || '')
+          )
         );
       } else if (interaction.customId === 'edit_footer') {
         modal.setCustomId('modal_footer').setTitle('Chân trang Embed');
-        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('footer_val').setLabel('Văn bản chân trang').setStyle(TextInputStyle.Short).setRequired(false)));
+        modal.addComponents(new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId('footer_val').setLabel('Văn bản chân trang').setStyle(TextInputStyle.Short).setRequired(false).setValue(currentEmbedData.footer || '')
+        ));
       } else if (interaction.customId === 'edit_color') {
         modal.setCustomId('modal_color').setTitle('Màu sắc');
-        modal.addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('color_val').setLabel('Màu Hex (VD: #FF69B4)').setStyle(TextInputStyle.Short).setRequired(true).setValue('#FF69B4')));
+        modal.addComponents(new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId('color_val').setLabel('Màu Hex (VD: #FF69B4)').setStyle(TextInputStyle.Short).setRequired(true).setValue('#' + (currentEmbedData.color || 0xFF69B4).toString(16)))
+        );
       }
       return await interaction.showModal(modal);
     }
 
-    // 7. Nhận dữ liệu Modal Submit và lưu vào bộ nhớ server
+    // 7. Nhận dữ liệu Modal Submit và Báo cáo kết quả chi tiết
     if (interaction.isModalSubmit()) {
       const category = interaction.client.tempCategory?.[interaction.user.id] || 'Đang diễn ra';
       
       if (interaction.customId === 'modal_edit_msg') {
-        config.categories[category].message = interaction.fields.getTextInputValue('msg_content');
-        return await interaction.reply({ content: `✅ Đã lưu nội dung message cho **${category}** thành công!`, ephemeral: true });
+        const val = interaction.fields.getTextInputValue('msg_content');
+        config.categories[category].message = val;
+        return await interaction.reply({ 
+          content: `✅ **Thành công!** Đã cập nhật Nội dung Message cho **${category}**:\n\`\`\`${val || '(Trống)'}\`\`\``, 
+          ephemeral: true 
+        });
       } else if (interaction.customId === 'modal_author') {
-        config.categories[category].embed.author = interaction.fields.getTextInputValue('author_val');
-        return await interaction.reply({ content: `✅ Đã lưu tác giả cho **${category}** thành công!`, ephemeral: true });
+        const val = interaction.fields.getTextInputValue('author_val');
+        config.categories[category].embed.author = val;
+        return await interaction.reply({ 
+          content: `✅ **Thành công!** Đã cập nhật Tác giả (Author) cho **${category}** thành: **${val || 'Mặc định'}**`, 
+          ephemeral: true 
+        });
       } else if (interaction.customId === 'modal_title_content') {
         const t = interaction.fields.getTextInputValue('title_val');
         const d = interaction.fields.getTextInputValue('desc_val');
         config.categories[category].embed.title = t || null;
         config.categories[category].embed.description = d || null;
-        return await interaction.reply({ content: `✅ Đã lưu tiêu đề & nội dung embed cho **${category}** thành công!`, ephemeral: true });
+        return await interaction.reply({ 
+          content: `✅ **Thành công!** Đã cập nhật Tiêu đề & Nội dung Embed cho phần **${category}**!`, 
+          ephemeral: true 
+        });
       } else if (interaction.customId === 'modal_footer') {
-        config.categories[category].embed.footer = interaction.fields.getTextInputValue('footer_val');
-        return await interaction.reply({ content: `✅ Đã lưu chân embed cho **${category}** thành công!`, ephemeral: true });
+        const val = interaction.fields.getTextInputValue('footer_val');
+        config.categories[category].embed.footer = val;
+        return await interaction.reply({ 
+          content: `✅ **Thành công!** Đã cập nhật Chân Embed (Footer) thành: **${val || 'Mặc định'}**`, 
+          ephemeral: true 
+        });
       } else if (interaction.customId === 'modal_color') {
-        const hex = interaction.fields.getTextInputValue('color_val').replace('#', '');
-        const colorInt = parseInt(hex, 16);
+        const hexStr = interaction.fields.getTextInputValue('color_val').replace('#', '');
+        const colorInt = parseInt(hexStr, 16);
         if (!isNaN(colorInt)) {
           config.categories[category].embed.color = colorInt;
-          return await interaction.reply({ content: `✅ Đã lưu màu sắc Hex thành công!`, ephemeral: true });
+          return await interaction.reply({ 
+            content: `✅ **Thành công!** Đã cập nhật màu sắc Embed thành: **#${hexStr}**`, 
+            ephemeral: true 
+          });
         } else {
-          return await interaction.reply({ content: `❌ Mã màu Hex không hợp lệ!`, ephemeral: true });
+          return await interaction.reply({ 
+            content: `❌ **Thất bại!** Mã màu Hex không hợp lệ (VD hợp lệ: \`#FF69B4\`).`, 
+            ephemeral: true 
+          });
         }
       }
     }
@@ -398,8 +436,9 @@ client.on('messageCreate', async (message) => {
     const isFlash = durationMs < 3600000;
     const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
     
-    // --- ĐỌC CẤU HÌNH CUSTOM TỪ SERVER ---
+    // --- LẤY CẤU HÌNH TỪ SERVER ---
     const serverConfig = getServerConfig(message.guild.id);
+    // Chỉ áp dụng custom khi trạng thái custom được BẬT
     const ongoingConfig = serverConfig.enabled ? serverConfig.categories["Đang diễn ra"] : null;
 
     for (let i = 0; i < giveawayCount; i++) {
@@ -409,13 +448,11 @@ client.on('messageCreate', async (message) => {
       const buildEmbed = (msRemaining) => {
         const customEmbed = ongoingConfig?.embed || {};
         
-        // Xử lý tiêu đề custom (nếu có placeholder {giveaway_prize})
         let finalTitle = `🎉 ${prize}`;
         if (customEmbed.title) {
           finalTitle = customEmbed.title.replace(/\{giveaway_prize\}/g, prize);
         }
 
-        // Xử lý mô tả custom (nếu có các placeholder)
         let finalDesc = `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
                         `• 👑 **Người tổ chức:** <@${message.author.id}>\n` +
                         `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
@@ -450,7 +487,6 @@ client.on('messageCreate', async (message) => {
         return embed;
       };
 
-      // Xác định nội dung text bên ngoài (Message content) nếu có custom
       const customMsgContent = ongoingConfig?.message;
       const contentPayload = customMsgContent ? { content: customMsgContent, embeds: [buildEmbed(durationMs)] } : { embeds: [buildEmbed(durationMs)] };
 
