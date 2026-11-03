@@ -126,10 +126,10 @@ client.on('interactionCreate', async (interaction) => {
           .setCustomId('select_action')
           .setPlaceholder('Chọn cài đặt cần chỉnh sửa...')
           .addOptions([
-            { label: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
-            { label: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
-            { label: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
-            { label: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
+            { label: 'Chỉnh sửa Nội dung Message', value: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
+            { label: 'Chỉnh sửa Embed', value: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
+            { label: 'Đặt lại Message', value: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
+            { label: 'Đặt lại Embed', value: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
           ])
       );
 
@@ -157,11 +157,11 @@ client.on('interactionCreate', async (interaction) => {
           .setCustomId('select_category')
           .setPlaceholder('Chọn loại tin nhắn giveaway cần sửa')
           .addOptions([
-            { label: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
-            { label: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
-            { label: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
-            { label: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
-            { label: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
+            { label: 'Đang diễn ra', value: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
+            { label: 'Đã kết thúc, có winner', value: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
+            { label: 'Đã kết thúc, không có winner', value: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
+            { label: 'Công bố kết quả', value: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
+            { label: 'Reroll người thắng', value: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
           ])
       );
 
@@ -220,10 +220,10 @@ client.on('interactionCreate', async (interaction) => {
           .setCustomId('select_action')
           .setPlaceholder('Chọn cài đặt cần chỉnh sửa...')
           .addOptions([
-            { label: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
-            { label: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
-            { label: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
-            { label: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
+            { label: 'Chỉnh sửa Nội dung Message', value: 'Chỉnh sửa Nội dung Message', description: 'Custom nội dung tin nhắn' },
+            { label: 'Chỉnh sửa Embed', value: 'Chỉnh sửa Embed', description: 'Custom nội dung embed' },
+            { label: 'Đặt lại Message', value: 'Đặt lại Message', description: 'Reset nội dung tin nhắn về mặc định' },
+            { label: 'Đặt lại Embed', value: 'Đặt lại Embed', description: 'Reset embed về mặc định' }
           ])
       );
       const rowBack = new ActionRowBuilder().addComponents(
@@ -320,11 +320,11 @@ client.on('messageCreate', async (message) => {
         .setCustomId('select_category')
         .setPlaceholder('Chọn loại tin nhắn giveaway cần sửa')
         .addOptions([
-          { label: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
-          { label: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
-          { label: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
-          { label: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
-          { label: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
+          { label: 'Đang diễn ra', value: 'Đang diễn ra', description: 'Tin nhắn giveaway khi giveaway đang diễn ra', emoji: '⏰' },
+          { label: 'Đã kết thúc, có winner', value: 'Đã kết thúc, có winner', description: 'Tin nhắn giveaway khi giveaway kết thúc', emoji: '🏁' },
+          { label: 'Đã kết thúc, không có winner', value: 'Đã kết thúc, không có winner', description: 'Tin nhắn giveaway khi không có người chiến thắng', emoji: '📬' },
+          { label: 'Công bố kết quả', value: 'Công bố kết quả', description: 'Tin nhắn phản hồi công bố người chiến thắng', emoji: '🍇' },
+          { label: 'Reroll người thắng', value: 'Reroll người thắng', description: 'Tin nhắn phản hồi khi reroll người chiến thắng', emoji: '🔄' }
         ])
     );
 
