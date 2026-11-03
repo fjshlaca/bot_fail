@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+4const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
@@ -97,7 +97,7 @@ client.on('messageCreate', async (message) => {
           `  \`z.ga @Role 1 12h Nitro\``
         )
         .setColor(0xFF69B4)
-        .setFooter({ text: 'Hệ thống Giveaway • Ver 3.0' });
+        .setFooter({ text: 'Hệ thống Giveaway • Emc4' });
 
       return message.reply({ embeds: [helpEmbed] });
     }
