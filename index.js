@@ -71,7 +71,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 3.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 3.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -81,7 +81,7 @@ client.on('messageCreate', async (message) => {
   const command = args.shift().toLowerCase();
 
   if (command === 'ga') {
-    // --- 1. BẢNG HƯỚNG DẪN DẠNG EMBED ĐẸP MẮT KHI GÕ CHỈ MỖI Z.GA ---
+    // 1. BẢNG HƯỚNG DẪN DẠNG EMBED KHI GÕ CHỈ MỖI Z.GA
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
         .setAuthor({ 
@@ -193,7 +193,7 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- KHI GA KẾT THÚC: BẢNG KẾT QUẢ SẼ LÀ BẢNG EMBED ĐẸP MẮT ---
+      // --- KHI GA KẾT THÚC ---
       setTimeout(async () => {
         clearInterval(interval);
 
@@ -258,7 +258,7 @@ client.on('messageCreate', async (message) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        // Đổi màu bài gốc thành xám/kết thúc
+        // Cập nhật Embed bài gốc
         const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
           .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
           .setDescription(
@@ -270,7 +270,7 @@ client.on('messageCreate', async (message) => {
 
         await fetchedMsg.edit({ embeds: [endEmbed] });
 
-        // --- 2. GỬI THÊM BẢNG EMBED TỰ NỔ CHÚC MỪNG CHIẾN THẮNG ---
+        // Bảng Embed kết quả tự nổ
         const winAnnounceEmbed = new EmbedBuilder()
           .setAuthor({ name: '🎉 KẾT QUẢ GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
           .setTitle(`🎁 Phần thưởng: ${prize}`)
@@ -282,11 +282,15 @@ client.on('messageCreate', async (message) => {
           .setColor(0xFF69B4)
           .setTimestamp();
 
-        message.channel.send({ embeds: [winAnnounceEmbed] });
+        // GỬI KÈM PING TRỰC TIẾP RA NGOÀI EMBED ĐỂ NỔ THÔNG BÁO TING TING!
+        message.channel.send({ 
+          content: `🎉 Chúc mừng ${winnerMentions} đã trúng **${prize}** của <@${message.author.id}>!`, 
+          embeds: [winAnnounceEmbed] 
+        });
       }, durationMs);
     }
 
-    // --- BẢNG BONUS ENTRIES (CHỈ HIỆN KHI GA >= 1 GIỜ) ---
+    // Bảng Bonus Entries (Chỉ hiện khi GA >= 1 giờ)
     if (lastCreatedMessage && !isFlash) {
       const noteEmbed = new EmbedBuilder()
         .setTitle('✨ **Bonus Entries**')
