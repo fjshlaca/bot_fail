@@ -31,11 +31,11 @@ const ROLE_ENTRIES = {
 const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
 
 const RANDOM_ROLES_POOL = [
-  { id: '1393150502157680761', weight: 90, name: 'Cấp 1 (90%)' },
-  { id: '1393150909327999006', weight: 5,  name: 'Cấp 2 (5%)' },
-  { id: '1393151139972644905', weight: 3,  name: 'Cấp 3 (3%)' },
-  { id: '1393151668144574474', weight: 1,  name: 'Cấp 4 (1%)' },
-  { id: '1393170229072367758', weight: 1,  name: 'Cấp 5 (1%)' }
+  { id: '1393150502157680761', weight: 65, name: 'Cấp 1 (90%)' },
+  { id: '1393150909327999006', weight: 15,  name: 'Cấp 2 (5%)' },
+  { id: '1393151139972644905', weight: 10,  name: 'Cấp 3 (3%)' },
+  { id: '1393151668144574474', weight: 5,  name: 'Cấp 4 (1%)' },
+  { id: '1393170229072367758', weight: 5,  name: 'Cấp 5 (1%)' }
 ];
 
 // Hàm quay số ngẫu nhiên theo tỷ lệ trọng số (Weight)
