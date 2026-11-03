@@ -28,7 +28,10 @@ const ROLE_ENTRIES = {
 };
 
 const PREFIX = 'z.';
-const EMOJI_GA = '<<:zh_meotukgian:1564668143597658185>1564668143597658185>';
+// --- EMOJI MỚI CỦA BRO ---
+const EMOJI_GA = '<:zh_meotukgian:1564668143597658185>';
+// --- ĐƯỜNG DẪN GIF TRANG TRÍ ---
+const GIVEAWAY_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=';
 
 function parseCustomDuration(str) {
   if (!str) return null;
@@ -67,7 +70,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 2.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 2.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -156,6 +159,8 @@ client.on('messageCreate', async (message) => {
           )
           .setColor(0xFF69B4)
           .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+          // Tích hợp GIF trang trí vào Embed Giveaway
+          .setImage(GIVEAWAY_GIF)
           .setFooter({
             text: `⏰ Kết thúc lúc`,
             iconURL: client.user.displayAvatarURL()
@@ -164,7 +169,14 @@ client.on('messageCreate', async (message) => {
       };
 
       const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
-      await gaMessage.react(EMOJI_GA);
+      
+      // Thêm reaction bằng custom emoji
+      try {
+        await gaMessage.react('1564668143597658185'); // React bằng ID của emoji mèo tức giận
+      } catch (e) {
+        await gaMessage.react('🌙'); // Fallback nếu bot không có quyền dùng emoji ngoài
+      }
+
       lastCreatedMessage = gaMessage;
 
       const interval = setInterval(async () => {
@@ -182,7 +194,8 @@ client.on('messageCreate', async (message) => {
         const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
         if (!fetchedMsg) return;
 
-        const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA);
+        // Lấy reaction theo ID emoji
+        const reaction = fetchedMsg.reactions.cache.find(r => r.emoji.id === '1564668143597658185') || fetchedMsg.reactions.cache.first();
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
@@ -252,7 +265,7 @@ client.on('messageCreate', async (message) => {
       }, durationMs);
     }
 
-    // --- BẢNG BONUS ENTRIES CĂN CHỈNH KÝ TỰ THẲNG HÀNG ---
+    // --- BẢNG BONUS ENTRIES CĂN CHỈNH THẲNG HÀNG ---
     if (lastCreatedMessage) {
       const noteEmbed = new EmbedBuilder()
         .setTitle('✨ **Bonus Entries**')
