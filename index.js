@@ -19,7 +19,7 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH BONUS ENTRIES ---
+// --- CẤU HÌNH BONUS ENTRIES (Vẫn tính toán ngầm bình thường) ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1,
   '1393151668144574474': 2,
@@ -56,13 +56,11 @@ function spinGacha() {
 
 const PREFIX = 'z.';
 
-// --- CẤU HÌNH EMOJI GACHA & GIVEAWAY THEO MẪU ---
+// --- CẤU HÌNH EMOJI & ẢNH GIVEAWAY ---
 const EMOJI_GA = '<:emoji_11:1567468310419742810>';
 
-// ẢNH GIVEAWAY
 const GA_THUMBNAIL = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
 const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aec458c&is=6aeaf40c&hm=2e038e911c66cc7be4e1d8f577e4da653e15a8adb6ea2b63b242437f2fd38ef7&=&format=webp&quality=lossless&width=1111&height=626';
-const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
   if (!str) return null;
@@ -101,7 +99,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.9 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 6.0 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -335,7 +333,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH GA (GIVEAWAY - GIAO DIỆN WINE DẠ TIỆC GỌN GÀNG) ---
+  // --- 3. LỆNH GA (GIVEAWAY - ẨN HOÀN TOÀN BẢNG BONUS ENTRIES) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -403,7 +401,6 @@ client.on('messageCreate', async (message) => {
 
     await message.delete().catch(() => {});
 
-    let lastCreatedMessage = null;
     const isFlash = durationMs < 3600000;
 
     for (let i = 0; i < giveawayCount; i++) {
@@ -433,7 +430,6 @@ client.on('messageCreate', async (message) => {
 
       const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
       await gaMessage.react(EMOJI_GA).catch(() => {});
-      lastCreatedMessage = gaMessage;
 
       const interval = setInterval(async () => {
         const remaining = endTime - Date.now();
@@ -444,7 +440,7 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- KHI GA KẾT THÚC ---
+      // --- KHI GA KẾT THÚC (Vẫn tính toán Bonus Entries ngầm) ---
       setTimeout(async () => {
         clearInterval(interval);
 
@@ -536,21 +532,6 @@ client.on('messageCreate', async (message) => {
           embeds: [winAnnounceEmbed] 
         });
       }, durationMs);
-    }
-
-    if (lastCreatedMessage && !isFlash) {
-      const noteEmbed = new EmbedBuilder()
-        .setTitle('✨ **Bonus Entries**')
-        .setDescription(
-          '<@&1393150909327999006> +1\n' +
-          '<@&1393151668144574474> +2\n' +
-          '<@&1393151139972644905> +3\n' +
-          '<@&1393170229072367758> +4'
-        )
-        .setImage(BONUS_GIF)
-        .setColor(0xC7A9C9);
-
-      await message.channel.send({ embeds: [noteEmbed] });
     }
   }
 });
