@@ -57,8 +57,13 @@ function spinGacha() {
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
 
-// GIF & Ảnh Trang trí (Đã cập nhật link ảnh mới)
-const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
+// --- CẤU HÌNH ẢNH GIVEAWAY ---
+// 1. Ảnh vuông nhỏ góc trên bên phải
+const GA_THUMBNAIL = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
+
+// 2. Ảnh banner dài nằm phía dưới
+const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aec458c&is=6aeaf40c&hm=2e038e911c66cc7be4e1d8f577e4da653e15a8adb6ea2b63b242437f2fd38ef7&=&format=webp&quality=lossless&width=1111&height=626';
+
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -98,7 +103,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.4 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.6 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -168,7 +173,7 @@ client.on('messageCreate', async (message) => {
             `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
             `• 💫 **Lời nhắn:** ${randomInner}`
           )
-          .setColor(0xE67E22)
+          .setColor(0x6D173D) // Đã đổi thanh dọc thành màu #6D173D
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
@@ -247,7 +252,7 @@ client.on('messageCreate', async (message) => {
         })
         .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
         .setDescription(innerDesc)
-        .setColor(isRoleAwarded ? 0xF1C40F : 0x9B59B6)
+        .setColor(0x6D173D) // Đã đổi thanh dọc thành màu #6D173D cho cả lúc trúng mảnh lẫn nhận role
         .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
@@ -322,7 +327,7 @@ client.on('messageCreate', async (message) => {
           `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
           `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
         )
-        .setColor(0x3498DB)
+        .setColor(0x6D173D)
         .setTimestamp();
 
       return message.channel.send({
@@ -352,7 +357,7 @@ client.on('messageCreate', async (message) => {
           `• 📌 **Tag trực tiếp Role:**\n` +
           `  \`z.ga @Role 1 12h Nitro\``
         )
-        .setColor(0xFF69B4)
+        .setColor(0x6D173D)
         .setFooter({ text: 'Hệ thống Giveaway • Emc4' });
 
       return message.reply({ embeds: [helpEmbed] });
@@ -426,9 +431,9 @@ client.on('messageCreate', async (message) => {
             `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
-          .setColor(0xFF69B4)
-          .setThumbnail(GA_GIF) // Ảnh góc trên mới
-          .setImage(GA_GIF)     // Ảnh bảng dưới mới
+          .setColor(0x6D173D) // Màu thanh bên trái của bảng GA
+          .setThumbnail(GA_THUMBNAIL) 
+          .setImage(GA_GIF)           
           .setFooter({
             text: `⏰ Kết thúc lúc`,
             iconURL: client.user.displayAvatarURL()
@@ -521,7 +526,7 @@ client.on('messageCreate', async (message) => {
             `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
             `• 🎉 **Người chiến thắng:** ${winnerMentions}`
           )
-          .setColor(0xFF69B4);
+          .setColor(0x6D173D);
 
         await fetchedMsg.edit({ embeds: [endEmbed] });
 
@@ -533,7 +538,7 @@ client.on('messageCreate', async (message) => {
             `• <a:dans:1393177512242053140> **Người trao quà:** <@${message.author.id}>\n` +
             `• 🏆 **Người trúng giải:** ${winnerMentions}`
           )
-          .setColor(0xFF69B4)
+          .setColor(0x6D173D)
           .setTimestamp();
 
         message.channel.send({ 
@@ -553,7 +558,7 @@ client.on('messageCreate', async (message) => {
           '<@&1393170229072367758> +4'
         )
         .setImage(BONUS_GIF)
-        .setColor(0xFF69B4);
+        .setColor(0x6D173D);
 
       await message.channel.send({ embeds: [noteEmbed] });
     }
