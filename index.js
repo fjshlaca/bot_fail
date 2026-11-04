@@ -173,7 +173,7 @@ client.on('messageCreate', async (message) => {
             `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
             `• 💫 **Lời nhắn:** ${randomInner}`
           )
-          .setColor(0x6D173D) // Đã đổi thanh dọc thành màu #6D173D
+          .setColor(0xC7A9C9) // Đã đổi thanh dọc thành màu #C7A9C9
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
@@ -252,7 +252,7 @@ client.on('messageCreate', async (message) => {
         })
         .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
         .setDescription(innerDesc)
-        .setColor(0x6D173D) // Đã đổi thanh dọc thành màu #6D173D cho cả lúc trúng mảnh lẫn nhận role
+        .setColor(0xC7A9C9) // Đã đổi thanh dọc thành màu #C7A9C9 cho cả lúc trúng mảnh lẫn nhận role
         .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
