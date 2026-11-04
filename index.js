@@ -30,8 +30,15 @@ const ROLE_ENTRIES = {
 // --- CẤU HÌNH GACHA RANDOM ROLE ---
 const REQUIRED_ROLE_ID = '1425167156668141728';
 
-// --- CẤU HÌNH ROLE ĐƯỢC PHÉP QUẢN LÝ GIVEAWAY (Tạo, Reroll, End) ---
-const GA_MANAGER_ROLE_ID = '1393170229072367758';
+// --- CẤU HÌNH PHÂN QUYỀN BAN QUẢN TRỊ ---
+const BOT_ADMIN_ID = '1247253243336069264'; // ID cá nhân của Đức (Quyền tối cao)
+const GA_MANAGER_ROLE_ID = '1393170229072367758'; // ID Role Quản lý GA
+
+// Hàm kiểm tra quyền dùng lệnh Quản lý GA (Đức HOẶC người có Role)
+function isGAAdmin(member) {
+  if (!member) return false;
+  return member.id === BOT_ADMIN_ID || member.roles.cache.has(GA_MANAGER_ROLE_ID);
+}
 
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
@@ -104,7 +111,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 6.4 GA ROLE SECURITY LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 6.5 BOT ADMIN BYPASS LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -265,10 +272,10 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) - YÊU CẦU ROLE QUẢN LÝ ---
+  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
   if (command === 'garr') {
-    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
-      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    if (!isGAAdmin(message.member)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
     }
 
     if (!message.reference || !message.reference.messageId) {
@@ -344,10 +351,10 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) - YÊU CẦU ROLE QUẢN LÝ ---
+  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
   if (command === 'end') {
-    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
-      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    if (!isGAAdmin(message.member)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
     }
 
     if (!message.reference || !message.reference.messageId) {
@@ -374,10 +381,10 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) - YÊU CẦU ROLE QUẢN LÝ ---
+  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
   if (command === 'ga') {
-    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
-      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    if (!isGAAdmin(message.member)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
     }
 
     if (args.length === 0) {
@@ -451,7 +458,7 @@ client.on('messageCreate', async (message) => {
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : ' Everyone ';
-      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐸𝐴𝐖𝐀𝐘';
+      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
         return new EmbedBuilder()
