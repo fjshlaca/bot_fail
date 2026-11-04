@@ -24,8 +24,32 @@ const BOT_ADMIN_ID = '1247253243336069264'; // ID cá nhân của Đức
 const GA_MANAGER_ROLE_ID = '1393170229072367758'; // Role Quản lý
 const JAIL_CHANNEL_ID = '1567570022224625817'; // Kênh Phạt Tù
 
-// Bộ nhớ lưu trữ tiến độ Phạt Tù
+// Bộ nhớ lưu trữ tiến độ Phạt Tù 
 const jailData = new Map();
+
+// 20 CÂU TRÊU NGƯƠI KHI GÕ z.ancut
+const TAUNT_MESSAGES = [
+  "Cố lên con trai, nhai kỹ nuốt chậm vào! 💩",
+  "Hương vị này có làm em xao xuyến không hả phạm nhân? 😂",
+  "Ngon thế nhờ, làm thêm miếng nữa đi cháu ơi! 🍽️",
+  "Tay nhanh hơn não hay não chậm hơn miệng thế? Gõ tiếp đi chờ gì nữa! 🤡",
+  "Ăn cứt rãnh tay thế, chắc ở ngoài nghiệp quật nhiều lắm hả? 💀",
+  "Cứ từ từ thưởng thức đi, ở trong này thời gian dài lắm anh em ạ~ 🕰️",
+  "Nốc cho đẫm vào rồi ngày mai lại được vào ăn tiếp nhé! 🍼",
+  "Uống nước suối súc miệng xong chiến tiếp đi bẹn ơi! 🚰",
+  "Độ mặn của món này hình như hơi quá hả? Thêm mấy chục nháy nữa cho vừa miệng nè! 🧂",
+  "Kém sang thế nhờ, sao lại để bị bắt vào đây gặm cái này thế hả? 🐒",
+  "Cố lên, nuốt trôi cục này là thấy ánh sáng cuối đường hầm liền (hoặc là ko)... 🕳️",
+  "Nghiệp chướng do mồm gây ra thì mồm phải chịu thôi con ạ! 🤫",
+  "Nhìn mặt thộn thế kia chắc đang cay cú lắm đúng không? Gõ tiếp đi cưng! 😼",
+  "Mỗi lần gõ là một lần bớt dại, rèn luyện tư duy đỉnh cao ghê ta! 🧠",
+  "Cẩn thận nghẹn đấy nhé, không ai cứu đằng ấy đâu nha~ 🥤",
+  "Ăn nhiều vào cho mau lớn, lớn rồi thì đừng có báo nữa nghe chưa! 👶",
+  "Húp trọn bát này xong chắc tinh thần sảng khoái hẳn lên nhỉ? ✨",
+  "Đúng là tuổi trẻ tài cao, tài thì chưa thấy toàn thấy cút với chả đậu! 📉",
+  "Cố tình gõ sai chính tả hay do tay run quá đấy hả đại vương? 🧓",
+  "Sám hối kiểu này chắc Phật tổ cũng phải quỳ gối xin hàng luôn quá! 🙏"
+];
 
 function isGAAdmin(member) {
   if (!member) return false;
@@ -110,7 +134,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 7.1 REPLY MODERATION LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 8.1 AN CUT VIEN MAN LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -131,12 +155,11 @@ client.on('messageCreate', async (message) => {
     let targetUser = message.mentions.members.first();
     let durationArgIndex = 1;
 
-    // Kiểm tra nếu không tag mà Reply tin nhắn
     if (!targetUser && message.reference && message.reference.messageId) {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
       if (repliedMsg) {
         targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
-        durationArgIndex = 0; // Tham số đầu tiên sẽ là thời gian
+        durationArgIndex = 0;
       }
     }
 
@@ -154,7 +177,7 @@ client.on('messageCreate', async (message) => {
     try {
       await targetUser.timeout(durationMs, reason);
       const muteEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔇 MUTE ', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: '🔇 MUTE', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Thành viên bị phạt:** <@${targetUser.id}>\n` +
           `• **Thời gian:** \`${formatTimeLeft(durationMs)}\`\n` +
@@ -167,7 +190,51 @@ client.on('messageCreate', async (message) => {
       return message.channel.send({ embeds: [muteEmbed] });
     } catch (err) {
       console.error(err);
-      return message.reply('❌ **Lỗi:** Không thể Mute người này !');
+      return message.reply('❌ **Lỗi:** Không thể Mute người này!');
+    }
+  }
+
+  // ==========================================
+  // 🔊 1.1. TÍNH NĂNG UNMUTE (z.unmute / Z.unmute)
+  // ==========================================
+  if (command === 'unmute') {
+    if (!isGAAdmin(message.member)) {
+      return message.reply('❌ **Bạn không có quyền sử dụng lệnh Unmute!**');
+    }
+
+    let targetUser = message.mentions.members.first();
+    let reasonIndex = 1;
+
+    if (!targetUser && message.reference && message.reference.messageId) {
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (repliedMsg) {
+        targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
+        reasonIndex = 0;
+      }
+    }
+
+    if (!targetUser) {
+      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Unmute rồi gõ `z.unmute [lý_do]`');
+    }
+
+    const reason = args.slice(reasonIndex).join(' ') || 'Không có lý do';
+
+    try {
+      await targetUser.timeout(null, reason);
+      const unmuteEmbed = new EmbedBuilder()
+        .setAuthor({ name: '🔊 UNMUTE', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setDescription(
+          `• **Thành viên được gỡ Mute:** <@${targetUser.id}>\n` +
+          `• **Người thực thi:** <@${message.author.id}>\n` +
+          `• **Lý do:** ${reason}`
+        )
+        .setColor(0x2ECC71)
+        .setTimestamp();
+
+      return message.channel.send({ embeds: [unmuteEmbed] });
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ **Lỗi:** Không thể Unmute người này!');
     }
   }
 
@@ -182,12 +249,11 @@ client.on('messageCreate', async (message) => {
     let targetUser = message.mentions.members.first();
     let reasonIndex = 1;
 
-    // Kiểm tra nếu không tag mà Reply tin nhắn
     if (!targetUser && message.reference && message.reference.messageId) {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
       if (repliedMsg) {
         targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
-        reasonIndex = 0; // Toàn bộ chữ đằng sau là lý do
+        reasonIndex = 0;
       }
     }
 
@@ -200,7 +266,7 @@ client.on('messageCreate', async (message) => {
     try {
       await targetUser.ban({ reason });
       const banEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔨  BAN ', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: '🔨 BAN', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Thành viên bị Ban:** <@${targetUser.id}>\n` +
           `• **Người thực thi:** <@${message.author.id}>\n` +
@@ -227,12 +293,11 @@ client.on('messageCreate', async (message) => {
     let targetUser = message.mentions.members.first();
     let amountIndex = 1;
 
-    // Kiểm tra nếu không tag mà Reply tin nhắn
     if (!targetUser && message.reference && message.reference.messageId) {
       const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
       if (repliedMsg) {
         targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
-        amountIndex = 0; // Tham số đầu tiên là số lần
+        amountIndex = 0;
       }
     }
 
@@ -245,7 +310,6 @@ client.on('messageCreate', async (message) => {
     const reason = args.slice(amountIndex + 1).join(' ') || 'Không có lý do';
 
     try {
-      // Tìm hoặc tạo Role Phạt Tù
       let jailRole = message.guild.roles.cache.find(r => r.name === 'Kẻ Tù Tội');
       if (!jailRole) {
         jailRole = await message.guild.roles.create({
@@ -274,13 +338,14 @@ client.on('messageCreate', async (message) => {
       jailData.set(targetUser.id, {
         required: amount,
         current: 0,
-        roles: oldRoleIds
+        roles: oldRoleIds,
+        failTronCount: 0
       });
 
       await targetUser.roles.set([jailRole.id]).catch(() => {});
 
       const jailEmbed = new EmbedBuilder()
-        .setAuthor({ name: 'Tù ngay con chó ', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: 'Tù ngay con chó', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Phạm nhân:** <@${targetUser.id}>\n` +
           `• **Hình phạt:** Phải gõ \`z.ancut\` đủ **${amount} lần** tại kênh <#${JAIL_CHANNEL_ID}>\n` +
@@ -300,7 +365,8 @@ client.on('messageCreate', async (message) => {
             `Chào mừng <@${targetUser.id}> đến với phòng giam!\n\n` +
             `• Để được tự do, bạn phải gõ lệnh \`z.ancut\` đúng **${amount} lần**.\n` +
             `• **Tiến độ hiện tại:** \`0 / ${amount}\` lần.\n\n` +
-            `*Cố gắng sám hối và gõ chăm chỉ nhen phạm nhân!*`
+            `🔓 **Mẹo trốn tù:** Bạn có thể type \`z.tron\` để có cơ hội trốn thoát (tỷ lệ thành công **20%**).\n` +
+            `⚠️ **Cảnh báo:** Nếu trốn thất bại liên tiếp **3 lần**, hình phạt của bạn sẽ bị **NHÂN ĐÔI** số lần \`z.ancut\`!`
           )
           .setColor(0xC7A9C9);
 
@@ -314,7 +380,68 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 💩 4. LỆNH ĂN CÚT ĐỂ RA TÙ (z.ancut)
+  // 🔓 3.1. TÍNH NĂNG TRỐN TÙ (z.tron)
+  // ==========================================
+  if (command === 'tron') {
+    const userId = message.author.id;
+    if (!jailData.has(userId)) {
+      return message.reply('❌ **Bạn có ở trong tù đâu mà đòi trốn!**');
+    }
+
+    const pData = jailData.get(userId);
+    const successRoll = Math.random() * 100;
+
+    if (successRoll < 20) {
+      try {
+        const jailRole = message.guild.roles.cache.find(r => r.name === 'Kẻ Tù Tội');
+        if (jailRole) {
+          await message.member.roles.remove(jailRole).catch(() => {});
+        }
+
+        if (pData.roles && pData.roles.length > 0) {
+          await message.member.roles.add(pData.roles).catch(() => {});
+        }
+
+        jailData.delete(userId);
+
+        const escapeEmbed = new EmbedBuilder()
+          .setTitle('🏃‍♂️ VƯỢT NGỤC THÀNH CÔNG XUẤT SẮC!')
+          .setDescription(
+            `• Phạm nhân <@${userId}> đã tính toán như thần và vượt ngục thành công ngỡ ngàng!\n` +
+            `• Bạn đã được tự do, khôi phục toàn bộ quyền hạn mà không cần phải gõ \`z.ancut\` nữa!`
+          )
+          .setColor(0xF1C40F);
+
+        return message.channel.send({ content: `<@${userId}>`, embeds: [escapeEmbed] });
+      } catch (err) {
+        console.error(err);
+        return message.reply('🏃‍♂️ Bạn trốn thành công nhưng xảy ra lỗi khi khôi phục role, hãy báo Admin!');
+      }
+    } else {
+      pData.failTronCount += 1;
+      let extraWarning = `• ❌ Trốn thất bại! Lần trượt thứ **${pData.failTronCount}/3** liên tiếp.`;
+
+      if (pData.failTronCount >= 3) {
+        pData.required *= 2;
+        pData.failTronCount = 0;
+        extraWarning += `\n\n🚨 **QUÁ TAM BA BẬN!** Bạn bị canh ngục tóm được và đập cho tơi tả, hình phạt đã bị **NHÂN ĐÔI** thành **${pData.required} lần** \`z.ancut\`!`;
+      }
+
+      const failTronEmbed = new EmbedBuilder()
+        .setAuthor({ name: '🚨 VƯỢT NGỤC BẤT THÀNH', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setDescription(
+          `> Phạm nhân <@${userId}> định trốn cửa sau nhưng bị gác ngục bắt quả tang!\n\n` +
+          `${extraWarning}\n` +
+          `• 📌 **Tiến độ hiện tại:** \`${pData.current} / ${pData.required}\` lần.`
+        )
+        .setColor(0xED4245);
+
+      return message.channel.send({ embeds: [failTronEmbed] });
+    }
+  }
+
+  // ==========================================
+  // 💩 4. LỆNH ĂN CÚT ĐỂ RA TÙ (z.ancut) + 20% ĂN CỨT VIÊN MÃN & TRÊU NGƯƠI
   // ==========================================
   if (command === 'ancut') {
     const userId = message.author.id;
@@ -323,7 +450,14 @@ client.on('messageCreate', async (message) => {
     }
 
     const pData = jailData.get(userId);
-    pData.current += 1;
+
+    // Tỉ lệ 20% kích hoạt "Ăn cứt viên mãn" (trừ thẳng 2 lần)
+    const isVienMan = Math.random() * 100 < 20;
+    const addedCount = isVienMan ? 2 : 1;
+    pData.current += addedCount;
+
+    // Lấy ngẫu nhiên 1 câu trêu ngươi trong 20 câu
+    const randomTaunt = TAUNT_MESSAGES[Math.floor(Math.random() * TAUNT_MESSAGES.length)];
 
     if (pData.current >= pData.required) {
       try {
@@ -342,7 +476,8 @@ client.on('messageCreate', async (message) => {
           .setTitle('🎉 CHÚC MỪNG BẠN ĐÃ ĐƯỢC MÃ HẠN TÙ!')
           .setDescription(
             `• Phạm nhân <@${userId}> đã hoàn tất **${pData.required}/${pData.required}** lần \`z.ancut\`!\n` +
-            `• Bạn đã chính thức được tự do và khôi phục lại các quyền hạn ban đầu.`
+            `• Bạn đã chính thức được tự do và khôi phục lại các quyền hạn ban đầu.\n\n` +
+            `*Lời nhắn lúc về:* "${randomTaunt}"`
           )
           .setColor(0x2ECC71);
 
@@ -352,12 +487,16 @@ client.on('messageCreate', async (message) => {
         return message.reply('🎉 Bạn đã hoàn thành án tù nhưng có lỗi khi khôi phục Role, vui lòng báo Admin!');
       }
     } else {
+      let vienManText = isVienMan ? `\n\n🌟 **ĂN CỨT VIÊN MÃN!** Quá trình thưởng thức cực kỳ thăng hoa, hệ thống thưởng nóng trừ thẳng **2 lần** luôn!` : '';
+
       const progressEmbed = new EmbedBuilder()
         .setAuthor({ name: '💩 BẢNG TIẾN ĐỘ CẢI TẠO', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(
-          `> Phạm nhân <@${userId}> vừa thực hiện 1 lần sám hối!\n\n` +
+          `> Phạm nhân <@${userId}> vừa thực hiện một nhát sám hối!\n` +
+          `> *"${randomTaunt}"*\n` +
+          `${vienManText}\n\n` +
           `• 📌 **Tiến độ cải tạo:** \`${pData.current} / ${pData.required}\` lần \`z.ancut\`.\n` +
-          `• ⏳ **Còn lại:** \`${pData.required - pData.current}\` lần nữa!`
+          `• ⏳ **Còn thiếu:** \`${pData.required - pData.current}\` lần nữa!`
         )
         .setColor(0xC7A9C9);
 
