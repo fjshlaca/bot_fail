@@ -450,7 +450,7 @@ client.on('messageCreate', async (message) => {
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
-      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
+      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : ' Everyone ';
       const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐸𝐴𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
