@@ -1,10 +1,10 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('Bot Discord Giveaway đang hoạt động!'));
+app.get('/', (req, res) => res.send('Bot Discord Giveaway & Moderation đang hoạt động!'));
 app.listen(PORT, () => console.log(`Web Server running on port ${PORT}`));
 
 // --- KHỞI TẠO BOT ---
@@ -19,7 +19,20 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH BONUS ENTRIES ---
+// --- CẤU HÌNH ADMIN & ROLE QUẢN LÝ ---
+const BOT_ADMIN_ID = '1247253243336069264'; // ID cá nhân của Đức
+const GA_MANAGER_ROLE_ID = '1393170229072367758'; // Role Quản lý
+const JAIL_CHANNEL_ID = '1567570022224625817'; // Kênh Phạt Tù
+
+// Bộ nhớ lưu trữ tiến độ Phạt Tù
+const jailData = new Map();
+
+function isGAAdmin(member) {
+  if (!member) return false;
+  return member.id === BOT_ADMIN_ID || member.roles.cache.has(GA_MANAGER_ROLE_ID);
+}
+
+// --- CẤU HÌNH BONUS ENTRIES & GACHA ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1,
   '1393151668144574474': 2,
@@ -27,18 +40,7 @@ const ROLE_ENTRIES = {
   '1393170229072367758': 4
 };
 
-// --- CẤU HÌNH GACHA RANDOM ROLE ---
 const REQUIRED_ROLE_ID = '1425167156668141728';
-
-// --- CẤU HÌNH PHÂN QUYỀN BAN QUẢN TRỊ ---
-const BOT_ADMIN_ID = '1247253243336069264'; // ID cá nhân của Đức (Quyền tối cao)
-const GA_MANAGER_ROLE_ID = '1393170229072367758'; // ID Role Quản lý GA
-
-// Hàm kiểm tra quyền dùng lệnh Quản lý GA (Đức HOẶC người có Role)
-function isGAAdmin(member) {
-  if (!member) return false;
-  return member.id === BOT_ADMIN_ID || member.roles.cache.has(GA_MANAGER_ROLE_ID);
-}
 
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
@@ -55,12 +57,9 @@ const activeGiveaways = new Map();
 function spinGacha() {
   const rand = Math.random() * 100;
   let cumulative = 0;
-
   for (const item of GACHA_POOL) {
     cumulative += item.weight;
-    if (rand < cumulative) {
-      return item;
-    }
+    if (rand < cumulative) return item;
   }
   return GACHA_POOL[0];
 }
@@ -111,7 +110,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 6.5 BOT ADMIN BYPASS LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 7.1 REPLY MODERATION LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -121,7 +120,252 @@ client.on('messageCreate', async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // --- 1. LỆNH RANDOM ROLE / GACHA (z.rdrole / Z.rdrole) ---
+  // ==========================================
+  // 🔇 1. TÍNH NĂNG MUTE (z.mute / Z.mute)
+  // ==========================================
+  if (command === 'mute') {
+    if (!isGAAdmin(message.member)) {
+      return message.reply('❌ **Bạn không có quyền sử dụng lệnh Mute!**');
+    }
+
+    let targetUser = message.mentions.members.first();
+    let durationArgIndex = 1;
+
+    // Kiểm tra nếu không tag mà Reply tin nhắn
+    if (!targetUser && message.reference && message.reference.messageId) {
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (repliedMsg) {
+        targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
+        durationArgIndex = 0; // Tham số đầu tiên sẽ là thời gian
+      }
+    }
+
+    if (!targetUser) {
+      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Mute rồi gõ `z.mute <thời_gian> [lý_do]`');
+    }
+
+    const durationMs = parseCustomDuration(args[durationArgIndex]);
+    if (!durationMs) {
+      return message.reply('❌ **Thời gian không hợp lệ!** Sử dụng: `s` (giây), `p` (phút), `h` (giờ), `d` (ngày). Ví dụ: `z.mute 10p`');
+    }
+
+    const reason = args.slice(durationArgIndex + 1).join(' ') || 'Không có lý do';
+
+    try {
+      await targetUser.timeout(durationMs, reason);
+      const muteEmbed = new EmbedBuilder()
+        .setAuthor({ name: '🔇 THÔNG BÁO MUTE (TIMEOUT)', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setDescription(
+          `• **Thành viên bị phạt:** <@${targetUser.id}>\n` +
+          `• **Thời gian:** \`${formatTimeLeft(durationMs)}\`\n` +
+          `• **Người thực thi:** <@${message.author.id}>\n` +
+          `• **Lý do:** ${reason}`
+        )
+        .setColor(0xC7A9C9)
+        .setTimestamp();
+
+      return message.channel.send({ embeds: [muteEmbed] });
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ **Lỗi:** Không thể Mute người này (Bot thiếu quyền hoặc Role đối phương cao hơn Bot)!');
+    }
+  }
+
+  // ==========================================
+  // 🔨 2. TÍNH NĂNG BAN (z.ban / Z.ban)
+  // ==========================================
+  if (command === 'ban') {
+    if (!isGAAdmin(message.member)) {
+      return message.reply('❌ **Bạn không có quyền sử dụng lệnh Ban!**');
+    }
+
+    let targetUser = message.mentions.members.first();
+    let reasonIndex = 1;
+
+    // Kiểm tra nếu không tag mà Reply tin nhắn
+    if (!targetUser && message.reference && message.reference.messageId) {
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (repliedMsg) {
+        targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
+        reasonIndex = 0; // Toàn bộ chữ đằng sau là lý do
+      }
+    }
+
+    if (!targetUser) {
+      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Ban rồi gõ `z.ban [lý_do]`');
+    }
+
+    const reason = args.slice(reasonIndex).join(' ') || 'Không có lý do';
+
+    try {
+      await targetUser.ban({ reason });
+      const banEmbed = new EmbedBuilder()
+        .setAuthor({ name: '🔨 THÔNG BÁO BAN (CẤM VĨNH VIỄN)', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setDescription(
+          `• **Thành viên bị Ban:** <@${targetUser.id}>\n` +
+          `• **Người thực thi:** <@${message.author.id}>\n` +
+          `• **Lý do:** ${reason}`
+        )
+        .setColor(0xED4245)
+        .setTimestamp();
+
+      return message.channel.send({ embeds: [banEmbed] });
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ **Lỗi:** Không thể Ban người này!');
+    }
+  }
+
+  // ==========================================
+  // ⚖️ 3. TÍNH NĂNG PHẠT TÙ (z.tu / Z.tu)
+  // ==========================================
+  if (command === 'tu') {
+    if (!isGAAdmin(message.member)) {
+      return message.reply('❌ **Bạn không có quyền sử dụng lệnh Phạt Tù!**');
+    }
+
+    let targetUser = message.mentions.members.first();
+    let amountIndex = 1;
+
+    // Kiểm tra nếu không tag mà Reply tin nhắn
+    if (!targetUser && message.reference && message.reference.messageId) {
+      const repliedMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (repliedMsg) {
+        targetUser = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
+        amountIndex = 0; // Tham số đầu tiên là số lần
+      }
+    }
+
+    const amount = parseInt(args[amountIndex]);
+
+    if (!targetUser || isNaN(amount) || amount <= 0) {
+      return message.reply('❌ **Cú pháp:** Reply tin nhắn hoặc Tag user rồi gõ `z.tu <số_lần_ăn_cút> [lý_do]` (Ví dụ: `z.tu 50 Spammer`)');
+    }
+
+    const reason = args.slice(amountIndex + 1).join(' ') || 'Không có lý do';
+
+    try {
+      // Tìm hoặc tạo Role Phạt Tù
+      let jailRole = message.guild.roles.cache.find(r => r.name === 'Kẻ Tù Tội');
+      if (!jailRole) {
+        jailRole = await message.guild.roles.create({
+          name: 'Kẻ Tù Tội',
+          color: 0x555555,
+          reason: 'Tạo Role phục vụ hệ thống Phạt Tù'
+        });
+
+        message.guild.channels.cache.forEach(async (channel) => {
+          if (channel.id === JAIL_CHANNEL_ID) {
+            await channel.permissionOverwrites.edit(jailRole, {
+              ViewChannel: true,
+              SendMessages: true,
+              ReadMessageHistory: true
+            }).catch(() => {});
+          } else {
+            await channel.permissionOverwrites.edit(jailRole, {
+              ViewChannel: false,
+              SendMessages: false
+            }).catch(() => {});
+          }
+        });
+      }
+
+      const oldRoleIds = targetUser.roles.cache.filter(r => r.id !== message.guild.id).map(r => r.id);
+      jailData.set(targetUser.id, {
+        required: amount,
+        current: 0,
+        roles: oldRoleIds
+      });
+
+      await targetUser.roles.set([jailRole.id]).catch(() => {});
+
+      const jailEmbed = new EmbedBuilder()
+        .setAuthor({ name: '⚖️ THÔNG BÁO BẮT GIỮ PHẠT TÙ', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setDescription(
+          `• **Phạm nhân:** <@${targetUser.id}>\n` +
+          `• **Hình phạt:** Phải gõ \`z.ancut\` đủ **${amount} lần** tại kênh <#${JAIL_CHANNEL_ID}>\n` +
+          `• **Người bắt:** <@${message.author.id}>\n` +
+          `• **Lý do:** ${reason}`
+        )
+        .setColor(0x34495E)
+        .setTimestamp();
+
+      message.channel.send({ embeds: [jailEmbed] });
+
+      const jailChannel = message.guild.channels.cache.get(JAIL_CHANNEL_ID);
+      if (jailChannel) {
+        const guideEmbed = new EmbedBuilder()
+          .setTitle('🚨 BẢNG HƯỚNG DẪN CẢI TẠO PHẠT TÙ 🚨')
+          .setDescription(
+            `Chào mừng <@${targetUser.id}> đến với phòng giam!\n\n` +
+            `• Để được tự do, bạn phải gõ lệnh \`z.ancut\` đúng **${amount} lần**.\n` +
+            `• **Tiến độ hiện tại:** \`0 / ${amount}\` lần.\n\n` +
+            `*Cố gắng sám hối và gõ chăm chỉ nhen phạm nhân!*`
+          )
+          .setColor(0xC7A9C9);
+
+        jailChannel.send({ content: `<@${targetUser.id}>`, embeds: [guideEmbed] });
+      }
+      return;
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ **Lỗi:** Không thể thực thi phạt tù đối tượng này!');
+    }
+  }
+
+  // ==========================================
+  // 💩 4. LỆNH ĂN CÚT ĐỂ RA TÙ (z.ancut)
+  // ==========================================
+  if (command === 'ancut') {
+    const userId = message.author.id;
+    if (!jailData.has(userId)) {
+      return message.reply('❌ **Bạn đâu có bị phạt tù đâu mà đòi ăn cút!**');
+    }
+
+    const pData = jailData.get(userId);
+    pData.current += 1;
+
+    if (pData.current >= pData.required) {
+      try {
+        const jailRole = message.guild.roles.cache.find(r => r.name === 'Kẻ Tù Tội');
+        if (jailRole) {
+          await message.member.roles.remove(jailRole).catch(() => {});
+        }
+
+        if (pData.roles && pData.roles.length > 0) {
+          await message.member.roles.add(pData.roles).catch(() => {});
+        }
+
+        jailData.delete(userId);
+
+        const freeEmbed = new EmbedBuilder()
+          .setTitle('🎉 CHÚC MỪNG BẠN ĐÃ ĐƯỢC MÃ HẠN TÙ!')
+          .setDescription(
+            `• Phạm nhân <@${userId}> đã hoàn tất **${pData.required}/${pData.required}** lần \`z.ancut\`!\n` +
+            `• Bạn đã chính thức được tự do và khôi phục lại các quyền hạn ban đầu.`
+          )
+          .setColor(0x2ECC71);
+
+        return message.channel.send({ content: `<@${userId}>`, embeds: [freeEmbed] });
+      } catch (err) {
+        console.error(err);
+        return message.reply('🎉 Bạn đã hoàn thành án tù nhưng có lỗi khi khôi phục Role, vui lòng báo Admin!');
+      }
+    } else {
+      const progressEmbed = new EmbedBuilder()
+        .setAuthor({ name: '💩 BẢNG TIẾN ĐỘ CẢI TẠO', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setDescription(
+          `> Phạm nhân <@${userId}> vừa thực hiện 1 lần sám hối!\n\n` +
+          `• 📌 **Tiến độ cải tạo:** \`${pData.current} / ${pData.required}\` lần \`z.ancut\`.\n` +
+          `• ⏳ **Còn lại:** \`${pData.required - pData.current}\` lần nữa!`
+        )
+        .setColor(0xC7A9C9);
+
+      return message.channel.send({ embeds: [progressEmbed] });
+    }
+  }
+
+  // --- 5. LỆNH RANDOM ROLE (z.rdrole / Z.rdrole) ---
   if (command === 'rdrole') {
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
       return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
@@ -272,7 +516,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
+  // --- 6. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
   if (command === 'garr') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
@@ -351,7 +595,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
+  // --- 7. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
   if (command === 'end') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
@@ -381,7 +625,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
+  // --- 8. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
   if (command === 'ga') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
@@ -457,7 +701,7 @@ client.on('messageCreate', async (message) => {
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
-      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : ' Everyone ';
+      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
       const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
