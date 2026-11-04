@@ -139,7 +139,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 9.5 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 9.6 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -693,8 +693,9 @@ client.on('messageCreate', async (message) => {
       const newWinnerId = availablePool[randomIndex];
       const newWinnerMention = `<@${newWinnerId}>`;
 
-      return message.channel.send({
-        content: `˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà ${prizeName} ⊹‧₊˚`
+      // Reply trực tiếp vào bài tin nhắn Giveaway
+      return targetMsg.reply({
+        content: `˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà __${prizeName}__ ⊹‧₊˚`
       });
 
     } catch (err) {
@@ -811,7 +812,7 @@ client.on('messageCreate', async (message) => {
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
-      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
+      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐸𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
         return new EmbedBuilder()
@@ -874,7 +875,7 @@ client.on('messageCreate', async (message) => {
           );
           await fetchedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
 
-          return message.channel.send({
+          return fetchedMsg.reply({
             content: `˚₊‧⊹  Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚`
           });
         }
@@ -921,8 +922,9 @@ client.on('messageCreate', async (message) => {
         );
         await fetchedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
 
-        return message.channel.send({
-          content: `˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà ${prize} ⊹‧₊˚`
+        // Reply trực tiếp vào bài tin nhắn Giveaway
+        return fetchedMsg.reply({
+          content: `˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __${prize}__ ⊹‧₊˚`
         });
       };
 
