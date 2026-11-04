@@ -19,7 +19,7 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH BONUS ENTRIES (Vẫn tính toán ngầm bình thường) ---
+// --- CẤU HÌNH BONUS ENTRIES ---
 const ROLE_ENTRIES = {
   '1393150909327999006': 1,
   '1393151668144574474': 2,
@@ -27,8 +27,8 @@ const ROLE_ENTRIES = {
   '1393170229072367758': 4
 };
 
-// --- CẤU HÌNH GACHA RANDOM ROLE (z.rdrole) ---
-const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
+// --- CẤU HÌNH GACHA RANDOM ROLE ---
+const REQUIRED_ROLE_ID = '1425167156668141728';
 
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
@@ -40,6 +40,10 @@ const GACHA_POOL = [
 ];
 
 const userGachaProgress = new Map();
+
+// Bộ nhớ theo dõi các bài GA đang hoạt động để phục vụ z.end
+// Cấu trúc: Map<messageId, { endGaFunction, timeoutId, intervalId }>
+const activeGiveaways = new Map();
 
 function spinGacha() {
   const rand = Math.random() * 100;
@@ -57,7 +61,8 @@ function spinGacha() {
 const PREFIX = 'z.';
 
 // --- CẤU HÌNH EMOJI & ẢNH GIVEAWAY ---
-const EMOJI_GA = '<:emoji_11:1567468310419742810>';
+const EMOJI_GA_ID = '1567468310419742810';
+const EMOJI_GA = `<:emoji_11:${EMOJI_GA_ID}>`;
 
 const GA_THUMBNAIL = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
 const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aec458c&is=6aeaf40c&hm=2e038e911c66cc7be4e1d8f577e4da653e15a8adb6ea2b63b242437f2fd38ef7&=&format=webp&quality=lossless&width=1111&height=626';
@@ -99,16 +104,17 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 6.0 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 6.3 END GA LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+  const contentLower = message.content.toLowerCase();
+  if (message.author.bot || !contentLower.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // --- 1. LỆNH RANDOM ROLE / GACHA (z.rdrole) ---
+  // --- 1. LỆNH RANDOM ROLE / GACHA (z.rdrole / Z.rdrole) ---
   if (command === 'rdrole') {
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
       return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
@@ -259,81 +265,110 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 2. LỆNH REROLL GIVEAWAY (z.garr) ---
+  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
   if (command === 'garr') {
     if (!message.reference || !message.reference.messageId) {
       return message.reply('❌ **Bạn phải reply (phản hồi) vào tin nhắn bài giveaway cần reroll rồi mới gõ `z.garr`!**');
     }
 
     try {
-      const targetMsg = await message.channel.messages.fetch(message.reference.messageId);
+      const targetMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
       if (!targetMsg) {
         return message.reply('❌ Không tìm thấy tin nhắn giveaway được reply!');
       }
 
       await message.delete().catch(() => {});
 
-      const reaction = targetMsg.reactions.cache.get(EMOJI_GA) || targetMsg.reactions.cache.first();
+      let reaction = targetMsg.reactions.cache.get(EMOJI_GA_ID) || 
+                       targetMsg.reactions.cache.find(r => r.emoji.name === '🎁') || 
+                       targetMsg.reactions.cache.first();
+
       if (!reaction) {
-        return message.reply('❌ Không tìm thấy lượt tham gia nào ở bài giveaway này.');
+        return message.reply('❌ Không tìm thấy lượt thả emoji tham gia nào ở bài giveaway này!');
       }
 
       let users = await reaction.users.fetch();
       let validUsers = users.filter(u => !u.bot);
 
       if (validUsers.size === 0) {
-        return message.reply('❌ Không có người chơi hợp lệ nào khác để reroll!');
+        return message.reply('❌ Không có người chơi hợp lệ nào khác tham gia bài giveaway này!');
       }
 
-      let oldWinnersIds = [];
-      const embedDesc = targetMsg.embeds[0]?.description || '';
-      const mentionRegex = /<@(\d+)>/g;
-      let match;
-      while ((match = mentionRegex.exec(embedDesc)) !== null) {
-        oldWinnersIds.push(match[1]);
-      }
-
-      const availablePool = [];
-      for (const [userId] of validUsers) {
-        if (!oldWinnersIds.includes(userId)) {
-          availablePool.push(userId);
+      let oldWinnersIds = new Set();
+      if (targetMsg.embeds.length > 0) {
+        const embedText = JSON.stringify(targetMsg.embeds[0]);
+        const mentionRegex = /<@!?(\d+)>/g;
+        let match;
+        while ((match = mentionRegex.exec(embedText)) !== null) {
+          oldWinnersIds.add(match[1]);
         }
       }
 
+      oldWinnersIds.add(message.author.id);
+
+      const availablePool = Array.from(validUsers.keys()).filter(id => !oldWinnersIds.has(id));
+
       if (availablePool.length === 0) {
-        return message.reply('❌ Không còn người chơi nào khác ngoài những người đã trúng giải trước đó để reroll!');
+        return message.reply('❌ Không còn người chơi hợp lệ nào khác để reroll!');
       }
 
       const randomIndex = Math.floor(Math.random() * availablePool.length);
       const newWinnerId = availablePool[randomIndex];
       const newWinnerMention = `<@${newWinnerId}>`;
 
-      const oldTitle = targetMsg.embeds[0]?.title || 'Giveaway';
-      const prizeName = oldTitle.replace(/^[🏆❌🎉\s\[ĐÃ KẾT THÚC\]]+/g, '');
+      const oldTitle = targetMsg.embeds[0]?.title || 'WINE GIVEAWAY';
 
       const rerollEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔄 REROLL NGƯỜI THẮNG', iconURL: message.guild.iconURL({ dynamic: true }) })
-        .setTitle(`🎁 Phần thưởng: ${prizeName}`)
+        .setAuthor({ name: '🔄 REROLL NGƯỜI THẮNG DẠ TIỆC', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setTitle(oldTitle)
         .setDescription(
-          `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
-          `• <:emoji_11:1567468310419742810> **Người tổ chức:** <@${message.author.id}>\n` +
-          `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
+          `> Người trúng trước đó không hợp lệ hoặc không nhận quà, hệ thống đã chọn vị khách mới!\n\n` +
+          `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
+          `• 🏆 **Vị khách chiến thắng mới:** ${newWinnerMention}`
         )
         .setColor(0xC7A9C9)
         .setTimestamp();
 
       return message.channel.send({
-        content: `🔄 **REROLL!** Chúc mừng ${newWinnerMention} đã may mắn nhận được **${prizeName}** thay thế!`,
+        content: `🔄 **REROLL!** Chúc mừng vị khách ${newWinnerMention} đã may mắn được lựa chọn thay thế!`,
         embeds: [rerollEmbed]
       });
 
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi Reroll:", err);
       return message.reply('❌ Đã xảy ra lỗi khi thực hiện reroll!');
     }
   }
 
-  // --- 3. LỆNH GA (GIVEAWAY - ẨN HOÀN TOÀN BẢNG BONUS ENTRIES) ---
+  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
+  if (command === 'end') {
+    if (!message.reference || !message.reference.messageId) {
+      return message.reply('❌ **Bạn phải reply (phản hồi) vào bài giveaway đang chạy rồi mới gõ `z.end`!**');
+    }
+
+    const targetMsgId = message.reference.messageId;
+    const gaData = activeGiveaways.get(targetMsgId);
+
+    if (!gaData) {
+      return message.reply('❌ **Không tìm thấy bài Giveaway đang chạy nào ở tin nhắn này** (có thể nó đã kết thúc từ trước rồi)!');
+    }
+
+    try {
+      await message.delete().catch(() => {});
+      // Hủy bộ đếm thời gian đang chạy ngầm
+      clearTimeout(gaData.timeoutId);
+      clearInterval(gaData.intervalId);
+
+      // Kích hoạt hàm chốt người thắng ngay lập tức
+      await gaData.endGaFunction();
+      activeGiveaways.delete(targetMsgId);
+    } catch (err) {
+      console.error("Lỗi khi kết thúc GA sớm:", err);
+      return message.reply('❌ Đã xảy ra lỗi khi kết thúc Giveaway sớm!');
+    }
+  }
+
+  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -405,7 +440,7 @@ client.on('messageCreate', async (message) => {
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
-      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : ' Everyone ';
+      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
       const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
@@ -440,14 +475,15 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- KHI GA KẾT THÚC (Vẫn tính toán Bonus Entries ngầm) ---
-      setTimeout(async () => {
+      // --- HÀM XỬ LÝ KHI KẾT THÚC GA (CHẠY TỰ ĐỘNG HOẶC KHI GÕ z.end) ---
+      const endGaFunction = async () => {
         clearInterval(interval);
+        activeGiveaways.delete(gaMessage.id);
 
         const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
         if (!fetchedMsg) return;
 
-        const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA) || fetchedMsg.reactions.cache.first();
+        const reaction = fetchedMsg.reactions.cache.get(EMOJI_GA_ID) || fetchedMsg.reactions.cache.first();
         let users = reaction ? await reaction.users.fetch() : new Map();
         let validUsers = users.filter(u => !u.bot);
 
@@ -472,6 +508,7 @@ client.on('messageCreate', async (message) => {
           return fetchedMsg.edit({ embeds: [endEmbed] });
         }
 
+        // TÍNH TOÁN BONUS ENTRIES NGẦM CHUẨN ĐÉT
         const pool = [];
         for (const [userId] of validUsers) {
           let baseEntries = 1;
@@ -531,7 +568,16 @@ client.on('messageCreate', async (message) => {
           content: `🎉 Chúc mừng ${winnerMentions} đã rinh thành công **${prize}** từ dạ tiệc của <@${message.author.id}>!`, 
           embeds: [winAnnounceEmbed] 
         });
-      }, durationMs);
+      };
+
+      const timeoutId = setTimeout(endGaFunction, durationMs);
+
+      // Lưu lại thông tin để xử lý khi người dùng type z.end / Z.end
+      activeGiveaways.set(gaMessage.id, {
+        endGaFunction,
+        timeoutId,
+        intervalId: interval
+      });
     }
   }
 });
