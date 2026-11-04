@@ -27,77 +27,35 @@ const ROLE_ENTRIES = {
   '1393170229072367758': 4
 };
 
-// --- CẤU HÌNH GACHA RANDOM ROLE (z.rdrole) ---
+// --- CẤU HÌNH GACHA RANDOM ROLE MỚI (z.rdrole) ---
 const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
 
-// 5 Cấp Role (Thứ tự từ thấp Cấp 5 đến cao Cấp 1)
-const RANDOM_ROLES_POOL = [
-  { id: '1393170229072367758', weight: 90, level: 5, name: 'Cấp 5' }, // Thấp nhất
-  { id: '1393151668144574474', weight: 5, level: 4, name: 'Cấp 4' },
-  { id: '1393151139972644905', weight: 3, level: 3, name: 'Cấp 3' },
-  { id: '1393150909327999006', weight: 1,  level: 2, name: 'Cấp 2' },
-  { id: '1393150502157680761', weight: 1,  level: 1, name: 'Cấp 1' }  // Cao nhất
+// Danh sách các phần thưởng Gacha (id: null nghĩa là Chúc may mắn lần sau - không được gì)
+const GACHA_POOL = [
+  { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
+  { id: '1393170229072367758', weight: 25, name: 'Role Cấp 5',         level: 5 },
+  { id: '1393151668144574474', weight: 5,  name: 'Role Cấp 4',         level: 4 },
+  { id: '1393151139972644905', weight: 3,  name: 'Role Cấp 3',         level: 3 },
+  { id: '1393150909327999006', weight: 1,  name: 'Role Cấp 2',         level: 2 },
+  { id: '1393150502157680761', weight: 1,  name: 'Role Cấp 1',         level: 1 }
 ];
 
-// Bộ nhớ lưu số lần tích lũy (Pity Counter) cho từng User ID
-// Cấu trúc: { userId: { 5: countC5, 4: countC4, 3: countC3, 2: countC2 } }
-const userPityData = new Map();
+// Bộ nhớ lưu số lần tích lũy của từng user cho mỗi cấp role
+// Cấu trúc: { userId: { 5: số_lần_c5, 4: số_lần_c4, 3: số_lần_c3, 2: số_lần_c2, 1: số_lần_c1 } }
+const userGachaProgress = new Map();
 
-// Hàm xử lý Quay Gacha có tích hợp Bảo Hiểm (Pity System)
-function rollRoleWithPity(userId) {
-  if (!userPityData.has(userId)) {
-    userPityData.set(userId, { 5: 0, 4: 0, 3: 0, 2: 0 });
-  }
+// Hàm quay gacha ngẫu nhiên theo tỷ lệ trọng số
+function spinGacha() {
+  const rand = Math.random() * 100;
+  let cumulative = 0;
 
-  const userPity = userPityData.get(userId);
-  let finalRoleObj = null;
-  let isPityTriggered = false;
-
-  // 1. Kiểm tra điều kiện Bảo Hiểm từ thấp lên cao (2 lần cấp thấp -> chắc chắn cấp cao hơn)
-  if (userPity[5] >= 2) {
-    // Đã ra Cấp 5 hai lần -> Chắc chắn nâng lên Cấp 4
-    finalRoleObj = RANDOM_ROLES_POOL.find(r => r.level === 4);
-    userPity[5] = 0; // Reset đếm C5
-    isPityTriggered = true;
-  } else if (userPity[4] >= 2) {
-    // Đã ra Cấp 4 hai lần -> Chắc chắn nâng lên Cấp 3
-    finalRoleObj = RANDOM_ROLES_POOL.find(r => r.level === 3);
-    userPity[4] = 0; // Reset đếm C4
-    isPityTriggered = true;
-  } else if (userPity[3] >= 2) {
-    // Đã ra Cấp 3 hai lần -> Chắc chắn nâng lên Cấp 2
-    finalRoleObj = RANDOM_ROLES_POOL.find(r => r.level === 2);
-    userPity[3] = 0; // Reset đếm C3
-    isPityTriggered = true;
-  } else if (userPity[2] >= 2) {
-    // Đã ra Cấp 2 hai lần -> Chắc chắn nâng lên Cấp 1 (Cao nhất)
-    finalRoleObj = RANDOM_ROLES_POOL.find(r => r.level === 1);
-    userPity[2] = 0; // Reset đếm C2
-    isPityTriggered = true;
-  }
-
-  // 2. Nếu không trúng Bảo hiểm -> Quay Random theo Tỷ Lệ bình thường
-  if (!finalRoleObj) {
-    const rand = Math.random() * 100;
-    let cumulative = 0;
-
-    for (const roleObj of RANDOM_ROLES_POOL) {
-      cumulative += roleObj.weight;
-      if (rand < cumulative) {
-        finalRoleObj = roleObj;
-        break;
-      }
+  for (const item of GACHA_POOL) {
+    cumulative += item.weight;
+    if (rand < cumulative) {
+      return item;
     }
-    if (!finalRoleObj) finalRoleObj = RANDOM_ROLES_POOL[0];
   }
-
-  // 3. Cập nhật số lần tích lũy Pity nếu ra các cấp thấp hơn
-  if (finalRoleObj.level === 5) userPity[5] += 1;
-  else if (finalRoleObj.level === 4) userPity[4] += 1;
-  else if (finalRoleObj.level === 3) userPity[3] += 1;
-  else if (finalRoleObj.level === 2) userPity[2] += 1;
-
-  return { role: finalRoleObj, isPity: isPityTriggered };
+  return GACHA_POOL[0];
 }
 
 const PREFIX = 'z.';
@@ -144,7 +102,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 4.0 PITY SYSTEM LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.0 GACHA PITY LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -153,43 +111,80 @@ client.on('messageCreate', async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // --- 1. LỆNH RANDOM ROLE CÓ BẢO HIỂM (z.rdrole) ---
+  // --- 1. LỆNH RANDOM ROLE / GACHA (z.rdrole) ---
   if (command === 'rdrole') {
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
       return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
     }
 
     try {
-      // Quay thưởng theo cơ chế Pity
-      const rollResult = rollRoleWithPity(message.author.id);
-      const selectedRole = rollResult.role;
-      const isPity = rollResult.isPity;
-      
-      // Thêm Role trúng thưởng cho thành viên
-      await message.member.roles.add(selectedRole.id).catch((err) => {
-        console.error("Lỗi cấp Role:", err);
-      });
+      const result = spinGacha();
+      const userId = message.author.id;
 
-      const pityNotice = isPity ? '\n🔥 **[KÍCH HOẠT BẢO HIỂM]** Cậu đã tích đủ 2 lần ở cấp thấp hơn nên được nâng bậc thẳng lên role này!' : '';
+      // Nếu quay trúng "Chúc may mắn lần sau" (id: null)
+      if (result.id === null) {
+        const failEmbed = new EmbedBuilder()
+          .setAuthor({ 
+            name: '🎲 VÒNG QUAY RANDOM ROLE', 
+            iconURL: message.author.displayAvatarURL({ dynamic: true }) 
+          })
+          .setTitle('😢 Rất Tiếc, Chúc May Mắn Lần Sau!')
+          .setDescription(
+            `> Người chơi <@${userId}> vừa quay nhưng không trúng gì cả (65% tỉ lệ trắng tay)...\n\n` +
+            `• ❌ **Kết quả:** Trượt rồi, không lượm được gì hết!`
+          )
+          .setColor(0xED4245)
+          .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
+          .setTimestamp();
 
-      const rdEmbed = new EmbedBuilder()
+        return message.channel.send({
+          content: `😢 <@${userId}> quay ra ô **Chúc may mắn lần sau**! Đen thôi đỏ quên đi.`,
+          embeds: [failEmbed]
+        });
+      }
+
+      // Nếu quay trúng Role (Cấp 1 -> Cấp 5)
+      if (!userGachaProgress.has(userId)) {
+        userGachaProgress.set(userId, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+      }
+
+      const userProgress = userGachaProgress.get(userId);
+      userProgress[result.level] += 1; // Tăng số lần trúng role này lên 1
+
+      let isRoleAwarded = false;
+      let descriptionText = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
+
+      // Kiểm tra xem đã đủ 2 lần chưa
+      if (userProgress[result.level] >= 2) {
+        isRoleAwarded = true;
+        userProgress[result.level] = 0; // Reset về 0 sau khi nhận role
+
+        // Thực tế add role cho user
+        await message.member.roles.add(result.id).catch((err) => {
+          console.error("Lỗi cấp Role:", err);
+        });
+
+        descriptionText += `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Hệ thống đã tự động add Role **<@&${result.id}>** vào tài khoản của cậu! 🎉`;
+      } else {
+        descriptionText += `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Quay trúng thêm 1 lần nữa để nhận role chính thức!*`;
+      }
+
+      const successEmbed = new EmbedBuilder()
         .setAuthor({ 
-          name: '🎲 VÒNG QUAY RANDOM ROLE (PITY SYSTEM)', 
+          name: '🎲 VÒNG QUAY RANDOM ROLE', 
           iconURL: message.author.displayAvatarURL({ dynamic: true }) 
         })
-        .setTitle('🎉 Chúc Mừng Bạn Đã Trúng Role!')
-        .setDescription(
-          `> Người chơi <@${message.author.id}> vừa thực hiện quay thành công!\n\n` +
-          `• 🏆 **Role nhận được:** <@&${selectedRole.id}>\n` +
-          `• ⚙️ **Trạng thái:** Đã tự động thêm vào hồ sơ.${pityNotice}`
-        )
-        .setColor(isPity ? 0xE74C3C : 0x9B59B6)
+        .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
+        .setDescription(descriptionText)
+        .setColor(isRoleAwarded ? 0xF1C40F : 0x9B59B6)
         .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
       return message.channel.send({
-        content: `🎉 Chúc mừng <@${message.author.id}> đã quay ra Role <@&${selectedRole.id}>!${isPity ? ' *(Nổ Bảo Hiểm)*' : ''}`,
-        embeds: [rdEmbed]
+        content: isRoleAwarded 
+          ? `🎉 Chúc mừng <@${userId}> đã tích lũy đủ 2 lần và chính thức nhận được Role <@&${result.id}>!` 
+          : `✨ <@${userId}> quay trúng <@&${result.id}> lần 1/2. Cố lên thêm 1 lần nữa nhé!`,
+        embeds: [successEmbed]
       });
 
     } catch (err) {
