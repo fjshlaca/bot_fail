@@ -57,8 +57,8 @@ function spinGacha() {
 const PREFIX = 'z.';
 const EMOJI_GA = '🎁';
 
-// GIF Trang trí
-const GA_GIF = 'https://media.discordapp.net/attachments/1537507318793511027/1549465230583529694/F81E1C5C-C35C-47FF-82F1-4D98F0CF34A3.gif?ex=6aeabc32&is=6ae96ab2&hm=228e9a79e8aade80790a8c105ad5cc3af8ff0d81bb2be9fd174bd9111365f22e&=&width=1280&height=193';
+// GIF & Ảnh Trang trí (Đã cập nhật link ảnh mới)
+const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -98,7 +98,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.4 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -427,8 +427,8 @@ client.on('messageCreate', async (message) => {
             `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
           .setColor(0xFF69B4)
-          .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-          .setImage(GA_GIF)
+          .setThumbnail(GA_GIF) // Ảnh góc trên mới
+          .setImage(GA_GIF)     // Ảnh bảng dưới mới
           .setFooter({
             text: `⏰ Kết thúc lúc`,
             iconURL: client.user.displayAvatarURL()
