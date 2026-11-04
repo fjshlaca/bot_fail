@@ -98,7 +98,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.3 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -117,9 +117,8 @@ client.on('messageCreate', async (message) => {
       const result = spinGacha();
       const userId = message.author.id;
 
-      // Nếu quay trúng "Chúc may mắn lần sau" (id: null)
+      // --- TRƯỜNG HỢP TRẮNG TAY (id: null) ---
       if (result.id === null) {
-        // 15 Câu random cho Content (Tin nhắn bên ngoài)
         const outerFailMessages = [
           `✨ Cậu chủ <@${userId}> ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><! Thử lại nha!`,
           `🌸 Cậu chủ <@${userId}> hông được nản nha, vòng quay đang tích năng lượng để dành quà bự cho cậu đó!`,
@@ -138,7 +137,6 @@ client.on('messageCreate', async (message) => {
           `🎁 Cậu chủ <@${userId}> ơi hít một hơi thật sâu rồi làm lại quả nhấp siêu phẩm nữa nào!`
         ];
 
-        // 15 Câu random cho Lời Nhắn (Bên trong Embed)
         const innerFailMessages = [
           "Cậu chủ ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><!",
           "Nhân phẩm của cậu chủ đang nạp năng lượng đó, lượt sau chắc chắn đỏ lềnh lềnh luôn!",
@@ -157,8 +155,8 @@ client.on('messageCreate', async (message) => {
           "Tích tiểu thành đại, lượt sau nhất định cậu chủ sẽ khiến cả server trầm trồ!"
         ];
 
-        const randomOuterMsg = outerFailMessages[Math.floor(Math.random() * outerFailMessages.length)];
-        const randomInnerMsg = innerFailMessages[Math.floor(Math.random() * innerFailMessages.length)];
+        const randomOuter = outerFailMessages[Math.floor(Math.random() * outerFailMessages.length)];
+        const randomInner = innerFailMessages[Math.floor(Math.random() * innerFailMessages.length)];
 
         const failEmbed = new EmbedBuilder()
           .setAuthor({ 
@@ -168,19 +166,19 @@ client.on('messageCreate', async (message) => {
           .setTitle('✨ Suýt Nữa Thì Trúng Rùi!')
           .setDescription(
             `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
-            `• 💫 **Lời nhắn:** ${randomInnerMsg}`
+            `• 💫 **Lời nhắn:** ${randomInner}`
           )
           .setColor(0xE67E22)
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
         return message.channel.send({
-          content: randomOuterMsg,
+          content: randomOuter,
           embeds: [failEmbed]
         });
       }
 
-      // Nếu quay trúng Role (Cấp 1 -> Cấp 5)
+      // --- TRƯỜNG HỢP QUAY TRÚNG ROLE ---
       if (!userGachaProgress.has(userId)) {
         userGachaProgress.set(userId, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
       }
@@ -189,9 +187,11 @@ client.on('messageCreate', async (message) => {
       userProgress[result.level] += 1;
 
       let isRoleAwarded = false;
-      let descriptionText = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
+      let outerMsg = "";
+      let innerDesc = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
 
       if (userProgress[result.level] >= 2) {
+        // NHẬN ROLE THẬT (2/2)
         isRoleAwarded = true;
         userProgress[result.level] = 0;
 
@@ -199,9 +199,45 @@ client.on('messageCreate', async (message) => {
           console.error("Lỗi cấp Role:", err);
         });
 
-        descriptionText += `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Hệ thống đã tự động add Role **<@&${result.id}>** vào tài khoản của cậu! 🎉`;
+        const winOuterList = [
+          `🎉 CHÚC MỪNGGG! Cậu chủ <@${userId}> đã tích đủ 2/2 và rinh trọn vẹn Role <@&${result.id}> rùi nè! 👑`,
+          `🔥 BÙNG NỔ NHÂN PHẨM! Cậu chủ <@${userId}> xuất sắc ẵm thành công Role <@&${result.id}> siêu xịn! ✨`,
+          `👑 Cả server dạt ra cho cậu chủ <@${userId}> tỏa sáng nào! Role <@&${result.id}> đã về tay chính chủ rùi! 🥳`,
+          `🎉 Quá đẳng cấp cậu chủ <@${userId}> ơi! Hệ thống đã trao tận tay Role <@&${result.id}> cho cậu rùi nhen!`,
+          `💖 Tuyệt vời ông mặt trời! Cậu chủ <@${userId}> đã chinh phục thành công Role <@&${result.id}> rùi nè~`
+        ];
+
+        const winInnerList = [
+          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Hệ thống đã tự động đeo Role **<@&${result.id}>** cực ngầu cho cậu chủ rùi đó! 🎉`,
+          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Sự kiên trì của cậu chủ đã được đền đáp xứng đáng bằng Role **<@&${result.id}>** siêu phẩm!`,
+          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Chúc mừng cậu chủ đã trở thành chủ nhân chính thức của Role **<@&${result.id}>**!`,
+          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Nhân phẩm đỉnh cao đã đưa Role **<@&${result.id}>** về ngay hồ sơ của cậu chủ rùi nè!`,
+          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Đã hoàn tất cấp Role **<@&${result.id}>** cho cậu chủ tỏa sáng khắp server!`
+        ];
+
+        outerMsg = winOuterList[Math.floor(Math.random() * winOuterList.length)];
+        innerDesc += winInnerList[Math.floor(Math.random() * winInnerList.length)];
+
       } else {
-        descriptionText += `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Quay trúng thêm 1 lần nữa để nhận role chính thức!*`;
+        // TRÚNG MẢNH 1/2
+        const progressOuterList = [
+          `✨ Woohoo~ Cậu chủ <@${userId}> vừa hốt được 1 mảnh **<@&${result.id}>** rùi nha! Cố thêm phát nữa nè!`,
+          `🌸 Tay thơm ghê chưa! Cậu chủ <@${userId}> đã thu thập được 1/2 **<@&${result.id}>** rùi á~`,
+          `🎀 Nhân phẩm nổ nhẹ! Cậu chủ <@${userId}> vừa lượm được mảnh **<@&${result.id}>** đầu tiên nè!`,
+          `💫 Chút nữa thôi cậu chủ <@${userId}> ơi! Đã có 1/2 **<@&${result.id}>** trong tay rùi đó!`,
+          `🍧 Đỉnh quá cậu chủ <@${userId}> ơi~ 1 mảnh **<@&${result.id}>** đã về đội, làm lượt nữa để chốt sổ nhen!`
+        ];
+
+        const progressInnerList = [
+          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Cậu chủ ơi, cố lên thêm một lượt nữa thôi là Role về tay rùi!*`,
+          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Nhân phẩm đang lên cao trào, cậu chủ làm thêm cú nhấp nữa cho rực rỡ nhen!*`,
+          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Còn đúng 1 bước ngắn nữa thôi là cậu chủ rinh trọn vẹn Role rùi á~*`,
+          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Vũ trụ đang gửi tín hiệu chúc mừng, cậu chủ tự tin thử tiếp nha!*`,
+          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Tích được nửa đường rùi, lượt quay tới nhất định sẽ là cú nổ siêu to!*`
+        ];
+
+        outerMsg = progressOuterList[Math.floor(Math.random() * progressOuterList.length)];
+        innerDesc += progressInnerList[Math.floor(Math.random() * progressInnerList.length)];
       }
 
       const successEmbed = new EmbedBuilder()
@@ -210,15 +246,13 @@ client.on('messageCreate', async (message) => {
           iconURL: message.author.displayAvatarURL({ dynamic: true }) 
         })
         .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
-        .setDescription(descriptionText)
+        .setDescription(innerDesc)
         .setColor(isRoleAwarded ? 0xF1C40F : 0x9B59B6)
         .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
       return message.channel.send({
-        content: isRoleAwarded 
-          ? `🎉 Chúc mừng cậu chủ <@${userId}> đã tích lũy đủ 2 lần và chính thức nhận được Role <@&${result.id}>!` 
-          : `✨ Cậu chủ <@${userId}> quay trúng <@&${result.id}> lần 1/2. Cố lên thêm 1 lần nữa nhé!`,
+        content: outerMsg,
         embeds: [successEmbed]
       });
 
