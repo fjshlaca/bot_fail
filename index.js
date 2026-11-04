@@ -154,7 +154,7 @@ client.on('messageCreate', async (message) => {
     try {
       await targetUser.timeout(durationMs, reason);
       const muteEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔇 THÔNG BÁO MUTE (TIMEOUT)', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: '🔇 MUTE ', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Thành viên bị phạt:** <@${targetUser.id}>\n` +
           `• **Thời gian:** \`${formatTimeLeft(durationMs)}\`\n` +
@@ -167,7 +167,7 @@ client.on('messageCreate', async (message) => {
       return message.channel.send({ embeds: [muteEmbed] });
     } catch (err) {
       console.error(err);
-      return message.reply('❌ **Lỗi:** Không thể Mute người này (Bot thiếu quyền hoặc Role đối phương cao hơn Bot)!');
+      return message.reply('❌ **Lỗi:** Không thể Mute người này !');
     }
   }
 
@@ -200,7 +200,7 @@ client.on('messageCreate', async (message) => {
     try {
       await targetUser.ban({ reason });
       const banEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔨 THÔNG BÁO BAN (CẤM VĨNH VIỄN)', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: '🔨  BAN ', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Thành viên bị Ban:** <@${targetUser.id}>\n` +
           `• **Người thực thi:** <@${message.author.id}>\n` +
@@ -280,7 +280,7 @@ client.on('messageCreate', async (message) => {
       await targetUser.roles.set([jailRole.id]).catch(() => {});
 
       const jailEmbed = new EmbedBuilder()
-        .setAuthor({ name: '⚖️ THÔNG BÁO BẮT GIỮ PHẠT TÙ', iconURL: message.guild.iconURL({ dynamic: true }) })
+        .setAuthor({ name: 'Tù ngay con chó ', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Phạm nhân:** <@${targetUser.id}>\n` +
           `• **Hình phạt:** Phải gõ \`z.ancut\` đủ **${amount} lần** tại kênh <#${JAIL_CHANNEL_ID}>\n` +
