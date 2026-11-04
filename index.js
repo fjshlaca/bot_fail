@@ -139,7 +139,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 9.4 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 9.5 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -661,12 +661,23 @@ client.on('messageCreate', async (message) => {
       }
 
       let oldWinnersIds = new Set();
+      let prizeName = 'món quà';
+
       if (targetMsg.embeds.length > 0) {
-        const embedText = JSON.stringify(targetMsg.embeds[0]);
+        const embed = targetMsg.embeds[0];
+        const embedText = JSON.stringify(embed);
         const mentionRegex = /<@!?(\d+)>/g;
         let match;
         while ((match = mentionRegex.exec(embedText)) !== null) {
           oldWinnersIds.add(match[1]);
+        }
+
+        // Trích xuất tên phần quà từ Description của Embed
+        if (embed.description) {
+          const prizeMatch = embed.description.match(/\*\*Phần quà:\*\*\s*(.+)/);
+          if (prizeMatch && prizeMatch[1]) {
+            prizeName = prizeMatch[1].trim();
+          }
         }
       }
 
@@ -683,7 +694,7 @@ client.on('messageCreate', async (message) => {
       const newWinnerMention = `<@${newWinnerId}>`;
 
       return message.channel.send({
-        content: `˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà…⊹‧₊˚`
+        content: `˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà ${prizeName} ⊹‧₊˚`
       });
 
     } catch (err) {
@@ -738,7 +749,7 @@ client.on('messageCreate', async (message) => {
         .setAuthor({ name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', iconURL: client.user.displayAvatarURL() })
         .setTitle('✨ Cách tạo GiveAway')
         .setDescription(
-          `> \`zga [@Role] <số_người_trúng> <thời_gian> <số_lượng_ga> <nội_dung>\`\n\n` +
+          `> \`zga [@Role] <số_người_trúng> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
           `• 🌐 **Tạo Giveaway thông thường:**\n` +
           `  \`zga 1 24h 1 100k\` hoặc \`Zga 2 10m 1 Nitro\`\n\n` +
           `• 📌 **Tag trực tiếp Role điều kiện:**\n` +
@@ -799,7 +810,7 @@ client.on('messageCreate', async (message) => {
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
-      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
+      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
       const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
@@ -911,7 +922,7 @@ client.on('messageCreate', async (message) => {
         await fetchedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
 
         return message.channel.send({
-          content: `˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà .... ⊹‧₊˚`
+          content: `˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà ${prize} ⊹‧₊˚`
         });
       };
 
