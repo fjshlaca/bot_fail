@@ -55,15 +55,13 @@ function spinGacha() {
 }
 
 const PREFIX = 'z.';
-const EMOJI_GA = '🎁';
 
-// --- CẤU HÌNH ẢNH GIVEAWAY ---
-// 1. Ảnh vuông nhỏ góc trên bên phải
+// --- CẤU HÌNH EMOJI GACHA & GIVEAWAY THEO MẪU ---
+const EMOJI_GA = '<:emoji_11:1567468310419742810>';
+
+// ẢNH GIVEAWAY
 const GA_THUMBNAIL = 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626';
-
-// 2. Ảnh banner dài nằm phía dưới
 const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aec458c&is=6aeaf40c&hm=2e038e911c66cc7be4e1d8f577e4da653e15a8adb6ea2b63b242437f2fd38ef7&=&format=webp&quality=lossless&width=1111&height=626';
-
 const BONUS_GIF = 'https://www.discordpfp.gg/images/banner/eyes/eyes-banner-surreal--surreal.webp?d=animated-card&v=3';
 
 function parseCustomDuration(str) {
@@ -103,7 +101,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.7 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.8 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -122,7 +120,6 @@ client.on('messageCreate', async (message) => {
       const result = spinGacha();
       const userId = message.author.id;
 
-      // --- TRƯỜNG HỢP TRẮNG TAY (id: null) ---
       if (result.id === null) {
         const outerFailMessages = [
           `✨ Cậu chủ <@${userId}> ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><! Thử lại nha!`,
@@ -173,7 +170,7 @@ client.on('messageCreate', async (message) => {
             `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
             `• 💫 **Lời nhắn:** ${randomInner}`
           )
-          .setColor(0xC7A9C9) // Đã đổi thanh dọc thành màu #C7A9C9
+          .setColor(0xC7A9C9)
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
@@ -183,7 +180,6 @@ client.on('messageCreate', async (message) => {
         });
       }
 
-      // --- TRƯỜNG HỢP QUAY TRÚNG ROLE ---
       if (!userGachaProgress.has(userId)) {
         userGachaProgress.set(userId, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
       }
@@ -196,7 +192,6 @@ client.on('messageCreate', async (message) => {
       let innerDesc = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
 
       if (userProgress[result.level] >= 2) {
-        // NHẬN ROLE THẬT (2/2)
         isRoleAwarded = true;
         userProgress[result.level] = 0;
 
@@ -224,7 +219,6 @@ client.on('messageCreate', async (message) => {
         innerDesc += winInnerList[Math.floor(Math.random() * winInnerList.length)];
 
       } else {
-        // TRÚNG MẢNH 1/2
         const progressOuterList = [
           `✨ Woohoo~ Cậu chủ <@${userId}> vừa hốt được 1 mảnh **<@&${result.id}>** rùi nha! Cố thêm phát nữa nè!`,
           `🌸 Tay thơm ghê chưa! Cậu chủ <@${userId}> đã thu thập được 1/2 **<@&${result.id}>** rùi á~`,
@@ -252,7 +246,7 @@ client.on('messageCreate', async (message) => {
         })
         .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
         .setDescription(innerDesc)
-        .setColor(0xC7A9C9) // Đã đổi thanh dọc thành màu #C7A9C9
+        .setColor(0xC7A9C9)
         .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
@@ -324,7 +318,7 @@ client.on('messageCreate', async (message) => {
         .setTitle(`🎁 Phần thưởng: ${prizeName}`)
         .setDescription(
           `> Người trúng cũ không hoàn thành yêu cầu, hệ thống đã quay lại!\n\n` +
-          `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
+          `• <:emoji_11:1567468310419742810> **Người tổ chức:** <@${message.author.id}>\n` +
           `• 🏆 **Người chiến thắng mới:** ${newWinnerMention}`
         )
         .setColor(0xC7A9C9)
@@ -341,7 +335,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH GA (GIVEAWAY) ---
+  // --- 3. LỆNH GA (GIVEAWAY - GIAO DIỆN WINE DẠ TIỆC) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -411,31 +405,31 @@ client.on('messageCreate', async (message) => {
 
     let lastCreatedMessage = null;
     const isFlash = durationMs < 3600000;
-    const headerTitle = isFlash ? '⚡ FLASH GIVEAWAY' : '🎁 GIVEAWAY';
 
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
-      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
+      const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
+
+      // Chuyển tiêu đề sang font Times New Roman kiểu Serif Unicode
+      // WINE GIVEAWAY -> 𝑊𝐼𝑁𝐸 𝐺𝐼𝑉𝐸𝐴𝑊𝐴𝑌 hoặc 𝚆𝙸𝙽𝙴 𝙶𝙸𝚅𝙴𝙰𝚆𝙰𝚈 (Dùng dạng Serif đậm nét cổ điển)
+      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
         return new EmbedBuilder()
-          .setAuthor({ 
-            name: headerTitle, 
-            iconURL: message.guild.iconURL({ dynamic: true }) 
-          })
-          .setTitle(`🎉 ${prize}`)
+          .setTitle(`<:emoji_11:1567468310419742810> ${wineTitleFont} <:emoji_11:1567468310419742810>`)
           .setDescription(
-            `> Hãy nhấn vào biểu tượng **${EMOJI_GA}** bên dưới để tham gia ngay!\n\n` +
-            `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
-            `• 🛡️ **Yêu cầu Role:** ${roleDisplay}\n` +
-            `• 🏆 **Số suất trúng:** \`${winnerCount} giải\`\n` +
-            `• ⏳ **Thời gian còn lại:** \`${formatTimeLeft(msRemaining)}\``
+            `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
+            `╰┈➤ Hãy chạm vào biểu tượng <:emoji_11:1567468310419742810> bên dưới để nhận lấy tấm vé tham dự dạ tiệc và có cơ hội trở thành chủ nhân của phần quà lần này.\n\n` +
+            `<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n` +
+            `<:emoji_10:1567468283764936836> **Điều kiện tham dự:** ${roleDisplay}\n` +
+            `<:emoji_13:1567468392544337972> **Số phần quà:** \`${winnerCount} giải\`\n` +
+            `<:emoji_12:1567468350823731322> **Thời gian khai tiệc còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
-          .setColor(0xC7A9C9) // Màu thanh bên trái của bảng GA
-          .setThumbnail(GA_THUMBNAIL) 
-          .setImage(GA_GIF)           
+          .setColor(0xC7A9C9)
+          .setThumbnail(GA_THUMBNAIL)
+          .setImage(GA_GIF)
           .setFooter({
-            text: `⏰ Kết thúc lúc`,
+            text: `⏰ Thời điểm kết thúc`,
             iconURL: client.user.displayAvatarURL()
           })
           .setTimestamp(endTime);
@@ -480,8 +474,8 @@ client.on('messageCreate', async (message) => {
 
         if (validUsers.size === 0) {
           const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-            .setTitle(`❌ [ĐÃ KẾT THÚC] ${prize}`)
-            .setDescription(`> Không có người chơi hợp lệ nào tham gia giveaway này!`)
+            .setTitle(`❌ [ĐÃ KẾT THÚC] WINE GIVEAWAY`)
+            .setDescription(`> Không có vị khách hợp lệ nào tham gia dạ tiệc này!`)
             .setColor(0xED4245);
           return fetchedMsg.edit({ embeds: [endEmbed] });
         }
@@ -520,29 +514,29 @@ client.on('messageCreate', async (message) => {
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
         const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-          .setTitle(`🏆 [ĐÃ KẾT THÚC] ${prize}`)
+          .setTitle(`🏆 [ĐÃ KẾT THÚC] WINE GIVEAWAY`)
           .setDescription(
-            `> Giveaway đã khép lại thành công!\n\n` +
-            `• <a:dans:1393177512242053140> **Người tổ chức:** <@${message.author.id}>\n` +
-            `• 🎉 **Người chiến thắng:** ${winnerMentions}`
+            `> Dạ tiệc đã khép lại thành công!\n\n` +
+            `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
+            `• 🎉 **Vị khách may mắn chiến thắng:** ${winnerMentions}`
           )
           .setColor(0xC7A9C9);
 
         await fetchedMsg.edit({ embeds: [endEmbed] });
 
         const winAnnounceEmbed = new EmbedBuilder()
-          .setAuthor({ name: '🎉 KẾT QUẢ GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
-          .setTitle(`🎁 Phần thưởng: ${prize}`)
+          .setAuthor({ name: '🎉 KẾT QUẢ DẠ TIỆC WINE GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
+          .setTitle(`🍷 Phần thưởng: ${prize}`)
           .setDescription(
-            `> Chúc mừng cậu chủ ${winnerMentions} đã may mắn bú đẫm giveaway!\n\n` +
-            `• <a:dans:1393177512242053140> **Người trao quà:** <@${message.author.id}>\n` +
+            `> Chúc mừng vị khách quý ${winnerMentions} đã may mắn nhận được phần quà từ dạ tiệc của chủ tiệc <@${message.author.id}>!\n\n` +
+            `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
             `• 🏆 **Người trúng giải:** ${winnerMentions}`
           )
           .setColor(0xC7A9C9)
           .setTimestamp();
 
         message.channel.send({ 
-          content: `🎉 Chúc mừng ${winnerMentions} me đã trúng **${prize}** của <@${message.author.id}>!`, 
+          content: `🎉 Chúc mừng ${winnerMentions} đã rinh thành công **${prize}** từ dạ tiệc của <@${message.author.id}>!`, 
           embeds: [winAnnounceEmbed] 
         });
       }, durationMs);
