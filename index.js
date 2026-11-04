@@ -28,8 +28,9 @@ const ALLOWED_ROLE_IDS = [
 ];
 const JAIL_CHANNEL_ID = '1567570022224625817'; // Kênh Phạt Tù
 
-// Bộ nhớ lưu trữ tiến độ Phạt Tù 
+// Bộ nhớ lưu trữ tiến độ Phạt Tù & Giveaway
 const jailData = new Map();
+const activeGiveaways = new Map();
 
 // 20 CÂU TRÊU NGƯƠI KHI GÕ zancut
 const TAUNT_MESSAGES = [
@@ -81,7 +82,6 @@ const GACHA_POOL = [
 ];
 
 const userGachaProgress = new Map();
-const activeGiveaways = new Map();
 
 function spinGacha() {
   const rand = Math.random() * 100;
@@ -93,7 +93,7 @@ function spinGacha() {
   return GACHA_POOL[0];
 }
 
-const PREFIX = 'z'; // Cú pháp lệnh bắt đầu bằng chữ z liền không có dấu chấm
+const PREFIX = 'z'; // Nhận diện cả z và Z
 
 // --- CẤU HÌNH EMOJI & ẢNH GIVEAWAY ---
 const EMOJI_GA_ID = '1567468310419742810';
@@ -104,7 +104,7 @@ const GA_GIF = 'https://media.discordapp.net/attachments/1425167406686404808/156
 
 function parseCustomDuration(str) {
   if (!str) return null;
-  const regex = /(\d+)\s*([sphd])/gi;
+  const regex = /(\d+)\s*([smhd])/gi; // Hỗ trợ s, m, h, d
   let match;
   let totalMs = 0;
   let found = false;
@@ -115,7 +115,7 @@ function parseCustomDuration(str) {
     const unit = match[2].toLowerCase();
 
     if (unit === 's') totalMs += value * 1000;
-    else if (unit === 'p') totalMs += value * 60 * 1000;
+    else if (unit === 'm') totalMs += value * 60 * 1000;
     else if (unit === 'h') totalMs += value * 60 * 60 * 1000;
     else if (unit === 'd') totalMs += value * 24 * 60 * 60 * 1000;
   }
@@ -124,7 +124,7 @@ function parseCustomDuration(str) {
 }
 
 function formatTimeLeft(msLeft) {
-  if (msLeft <= 0) return '0S';
+  if (msLeft <= 0) return 'Tiệc đã kết thúc';
   const seconds = Math.floor((msLeft / 1000) % 60);
   const minutes = Math.floor((msLeft / (1000 * 60)) % 60);
   const hours = Math.floor((msLeft / (1000 * 60 * 60)) % 24);
@@ -139,13 +139,12 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 9.0 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 9.1 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
+  if (message.author.bot || !message.content.toLowerCase().startsWith(PREFIX)) return;
 
-  // Cắt bỏ tiền tố z, nếu lệnh là zga thì sau khi shift command sẽ là 'ga'
   const rawContent = message.content.slice(PREFIX.length).trim();
   const args = rawContent.split(/ +/);
   const command = args.shift().toLowerCase();
@@ -170,12 +169,12 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!targetUser) {
-      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** rồi gõ `zmute <thời_gian> [lý_do]`');
+      return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zmute <thời_gian> [lý_do]`');
     }
 
     const durationMs = parseCustomDuration(args[durationArgIndex]);
     if (!durationMs) {
-      return message.reply('❌ **Thời gian không hợp lệ!** Sử dụng: `s`, `p`, `h`, `d`. Ví dụ: `zmute 10p`');
+      return message.reply('❌ **Thời gian không hợp lệ!** Sử dụng: `s`, `m`, `h`, `d`. Ví dụ: `zmute 10m`');
     }
 
     const reason = args.slice(durationArgIndex + 1).join(' ') || 'Không có lý do';
@@ -190,8 +189,7 @@ client.on('messageCreate', async (message) => {
           `• **Người thực thi:** <@${message.author.id}>\n` +
           `• **Lý do:** ${reason}`
         )
-        .setColor(0xC7A9C9)
-        .setTimestamp();
+        .setColor(0xC7A9C9);
 
       return message.channel.send({ embeds: [muteEmbed] });
     } catch (err) {
@@ -234,8 +232,7 @@ client.on('messageCreate', async (message) => {
           `• **Người thực thi:** <@${message.author.id}>\n` +
           `• **Lý do:** ${reason}`
         )
-        .setColor(0x2ECC71)
-        .setTimestamp();
+        .setColor(0x2ECC71);
 
       return message.channel.send({ embeds: [unmuteEmbed] });
     } catch (err) {
@@ -278,8 +275,7 @@ client.on('messageCreate', async (message) => {
           `• **Người thực thi:** <@${message.author.id}>\n` +
           `• **Lý do:** ${reason}`
         )
-        .setColor(0xED4245)
-        .setTimestamp();
+        .setColor(0xED4245);
 
       return message.channel.send({ embeds: [banEmbed] });
     } catch (err) {
@@ -358,8 +354,7 @@ client.on('messageCreate', async (message) => {
           `• **Người bắt:** <@${message.author.id}>\n` +
           `• **Lý do:** ${reason}`
         )
-        .setColor(0x34495E)
-        .setTimestamp();
+        .setColor(0x34495E);
 
       message.channel.send({ embeds: [jailEmbed] });
 
@@ -457,7 +452,6 @@ client.on('messageCreate', async (message) => {
 
     const pData = jailData.get(userId);
 
-    // Tỉ lệ 20% Ăn Cứt Viên Mãn (trừ thẳng 2 lần)
     const isVienMan = Math.random() * 100 < 20;
     const addedCount = isVienMan ? 2 : 1;
     pData.current += addedCount;
@@ -510,7 +504,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 💎 HÒM BÁU VẬT RANDOM ROLE (zrdrole) - Giao diện mới
+  // 💎 HÒM BÁU VẬT RANDOM ROLE (zrdrole)
   // ==========================================
   if (command === 'rdrole') {
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
@@ -520,9 +514,7 @@ client.on('messageCreate', async (message) => {
     try {
       const result = spinGacha();
       const userId = message.author.id;
-      const userName = message.author.username;
 
-      // Danh sách 6 mẫu câu trượt (ảnh d5b223)
       const failStories = [
         {
           title: "1.Suýt Chạm Tay Đến Báu Vật!",
@@ -558,8 +550,7 @@ client.on('messageCreate', async (message) => {
           .setTitle(selectedFail.title)
           .setDescription(selectedFail.desc)
           .setColor(0xC7A9C9)
-          .setFooter({ text: 'Zeithaven · The Royal Collection', iconURL: client.user.displayAvatarURL() })
-          .setTimestamp();
+          .setFooter({ text: 'Zeithaven · The Royal Collection', iconURL: client.user.displayAvatarURL() });
 
         return message.channel.send({ embeds: [failEmbed] });
       }
@@ -571,17 +562,13 @@ client.on('messageCreate', async (message) => {
       const userProgress = userGachaProgress.get(userId);
       userProgress[result.level] += 1;
 
-      let isRoleAwarded = false;
       let storageStatus = "";
 
       if (userProgress[result.level] >= 2) {
-        isRoleAwarded = true;
         userProgress[result.level] = 0;
-
         await message.member.roles.add(result.id).catch((err) => {
           console.error("Lỗi cấp Role:", err);
         });
-
         storageStatus = "Đã được add role thành công";
       } else {
         storageStatus = `1 / 2 lần (Chưa đủ điều kiện add role)`;
@@ -599,9 +586,7 @@ client.on('messageCreate', async (message) => {
           `Zeithaven · The Royal Collection\n\n` +
           `Một báu vật đã tìm thấy chủ nhân. 🤍`
         )
-        .setColor(0xC7A9C9)
-        .setFooter({ text: 'Royal Treasures • Zeithaven', iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
+        .setColor(0xC7A9C9);
 
       return message.channel.send({ embeds: [successEmbed] });
 
@@ -668,15 +653,8 @@ client.on('messageCreate', async (message) => {
       const newWinnerId = availablePool[randomIndex];
       const newWinnerMention = `<@${newWinnerId}>`;
 
-      // Lấy tên phần thưởng từ embed cũ nếu có
-      let prizeName = "món quà";
-      if (targetMsg.embeds.length > 0 && targetMsg.embeds[0].title) {
-        prizeName = targetMsg.embeds[0].title;
-      }
-
-      // Gửi dạng text hoàn toàn không kèm embed/bảng theo yêu cầu
       return message.channel.send({
-        content: `˚₊‧⊹  Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà ${prizeName}…⊹‧₊˚`
+        content: `˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà…⊹‧₊˚`
       });
 
     } catch (err) {
@@ -730,11 +708,11 @@ client.on('messageCreate', async (message) => {
         .setAuthor({ name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', iconURL: client.user.displayAvatarURL() })
         .setTitle('✨ Cách tạo GiveAway')
         .setDescription(
-          `> \`zga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
+          `> \`zga <id_role/none> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
           `• 🌐 **Mở cho tất cả mọi người:**\n` +
-          `  \`zga none 1 30s 1 tỷ\`\n\n` +
+          `  \`zga none 30s 1 1 tỷ\`\n\n` +
           `• 📌 **Tag trực tiếp Role:**\n` +
-          `  \`zga @Role 1 12h Nitro\``
+          `  \`zga @Role 12h 1 Nitro\``
         )
         .setColor(0xC7A9C9);
 
@@ -742,7 +720,6 @@ client.on('messageCreate', async (message) => {
     }
 
     let targetRoleId = null;
-    let winnerCount = null;
     let durationMs = null;
     let giveawayCount = 1;
     let prize = '';
@@ -758,11 +735,6 @@ client.on('messageCreate', async (message) => {
       currentIndex = 1;
     }
 
-    if (args[currentIndex] && !isNaN(parseInt(args[currentIndex]))) {
-      winnerCount = parseInt(args[currentIndex]);
-      currentIndex++;
-    }
-
     if (args[currentIndex]) {
       durationMs = parseCustomDuration(args[currentIndex]);
       if (durationMs) currentIndex++;
@@ -775,9 +747,6 @@ client.on('messageCreate', async (message) => {
 
     prize = args.slice(currentIndex).join(' ');
 
-    if (!winnerCount || winnerCount < 1) {
-      return message.reply('❌ **Thiếu số lượng giải!**');
-    }
     if (!durationMs) {
       return message.reply('❌ **Thời gian không hợp lệ!**');
     }
@@ -801,17 +770,12 @@ client.on('messageCreate', async (message) => {
             `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
             `<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n` +
             `<:emoji_10:1567468283764936836> **Điều kiện tham dự:** ${roleDisplay}\n` +
-            `<:emoji_13:1567468392544337972> **Số phần quà:** \`${winnerCount} giải\`\n` +
+            `<:emoji_13:1567468392544337972> **Phần quà:** \`${prize}\`\n` +
             `<:emoji_12:1567468350823731322> **Thời gian khai tiệc còn lại:** \`${formatTimeLeft(msRemaining)}\``
           )
           .setColor(0xC7A9C9)
           .setThumbnail(GA_THUMBNAIL)
-          .setImage(GA_GIF)
-          .setFooter({
-            text: `⏰ Thời điểm kết thúc`,
-            iconURL: client.user.displayAvatarURL()
-          })
-          .setTimestamp(endTime);
+          .setImage(GA_GIF);
       };
 
       const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
@@ -850,12 +814,20 @@ client.on('messageCreate', async (message) => {
           validUsers = filteredMap;
         }
 
-        // KHI KHÔNG CÓ AI THAM GIA HOẶC KHÔNG PICK ĐƯỢC: Giữ nguyên bảng embed gốc và gửi text ngoài kênh
+        // KHI KHÔNG CÓ AI THAM GIA: Giữ nguyên bảng Embed gốc (với trạng thái tiệc đã kết thúc) và gửi text ngoài kênh
         if (validUsers.size === 0) {
-          await message.channel.send({
-            content: `˚₊‧⊹  Dạ tiệc kết thúc, món quà ${prize} vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚`
+          const endedEmbed = EmbedBuilder.from(fetchedMsg.embeds[0]).setDescription(
+            `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
+            `<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n` +
+            `<:emoji_10:1567468283764936836> **Điều kiện tham dự:** ${roleDisplay}\n` +
+            `<:emoji_13:1567468392544337972> **Phần quà:** \`${prize}\`\n` +
+            `<:emoji_12:1567468350823731322> **Thời gian khai tiệc còn lại:** \`Tiệc đã kết thúc\``
+          );
+          await fetchedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
+
+          return message.channel.send({
+            content: `˚₊‧⊹  Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚`
           });
-          return;
         }
 
         const pool = [];
@@ -876,7 +848,7 @@ client.on('messageCreate', async (message) => {
         }
 
         const winners = [];
-        const actualWinnerCount = Math.min(winnerCount, validUsers.size);
+        const actualWinnerCount = Math.min(1, validUsers.size);
 
         while (winners.length < actualWinnerCount && pool.length > 0) {
           const randomIndex = Math.floor(Math.random() * pool.length);
@@ -891,9 +863,19 @@ client.on('messageCreate', async (message) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        // Gửi dòng tin nhắn thông báo trúng giải chính thức theo đúng định dạng yêu cầu (Không kèm bảng/embed)
+        // Cập nhật bảng embed thành trạng thái kết thúc
+        const endedEmbed = EmbedBuilder.from(fetchedMsg.embeds[0]).setDescription(
+          `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
+          `<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n` +
+          `<:emoji_10:1567468283764936836> **Điều kiện tham dự:** ${roleDisplay}\n` +
+          `<:emoji_13:1567468392544337972> **Phần quà:** \`${prize}\`\n` +
+          `<:emoji_12:1567468350823731322> **Thời gian khai tiệc còn lại:** \`Tiệc đã kết thúc\``
+        );
+        await fetchedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
+
+        // Gửi dòng tin nhắn thông báo trúng giải chính thức theo đúng định dạng yêu cầu
         return message.channel.send({
-          content: `˚₊‧⊹  Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà ${prize} …. ⊹‧₊˚`
+          content: `˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà …. ⊹‧₊˚`
         });
       };
 
