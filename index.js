@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
@@ -19,15 +19,19 @@ const client = new Client({
   ]
 });
 
-// --- CẤU HÌNH ADMIN & ROLE QUẢN LÝ ---
+// --- CẤU HÌNH ADMIN & ROLE QUẢN LÝ (Server Chính) ---
 const BOT_ADMIN_ID = '1247253243336069264'; // ID cá nhân của Đức
-const GA_MANAGER_ROLE_ID = '1393170229072367758'; // Role Quản lý
+const ALLOWED_ROLE_IDS = [
+  '1539318114913620038',
+  '1537508547234111639',
+  '1537784243692769320'
+];
 const JAIL_CHANNEL_ID = '1567570022224625817'; // Kênh Phạt Tù
 
 // Bộ nhớ lưu trữ tiến độ Phạt Tù 
 const jailData = new Map();
 
-// 20 CÂU TRÊU NGƯƠI KHI GÕ z.ancut
+// 20 CÂU TRÊU NGƯƠI KHI GÕ zancut
 const TAUNT_MESSAGES = [
   "Cố lên con trai, nhai kỹ nuốt chậm vào! 💩",
   "Hương vị này có làm em xao xuyến không hả phạm nhân? 😂",
@@ -53,7 +57,8 @@ const TAUNT_MESSAGES = [
 
 function isGAAdmin(member) {
   if (!member) return false;
-  return member.id === BOT_ADMIN_ID || member.roles.cache.has(GA_MANAGER_ROLE_ID);
+  if (member.id === BOT_ADMIN_ID) return true;
+  return member.roles.cache.some(r => ALLOWED_ROLE_IDS.includes(r.id));
 }
 
 // --- CẤU HÌNH BONUS ENTRIES & GACHA ---
@@ -68,11 +73,11 @@ const REQUIRED_ROLE_ID = '1425167156668141728';
 
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
-  { id: '1393170229072367758', weight: 25, name: 'Role Cấp 5',         level: 5 },
-  { id: '1393151668144574474', weight: 5,  name: 'Role Cấp 4',         level: 4 },
-  { id: '1393151139972644905', weight: 3,  name: 'Role Cấp 3',         level: 3 },
-  { id: '1393150909327999006', weight: 1,  name: 'Role Cấp 2',         level: 2 },
-  { id: '1393150502157680761', weight: 1,  name: 'Role Cấp 1',         level: 1 }
+  { id: '1393170229072367758', weight: 25, name: 'Royal Role Cấp 5',   level: 5 },
+  { id: '1393151668144574474', weight: 5,  name: 'Royal Role Cấp 4',   level: 4 },
+  { id: '1393151139972644905', weight: 3,  name: 'Royal Role Cấp 3',   level: 3 },
+  { id: '1393150909327999006', weight: 1,  name: 'Royal Role Cấp 2',   level: 2 },
+  { id: '1393150502157680761', weight: 1,  name: 'Royal Role Cấp 1',   level: 1 }
 ];
 
 const userGachaProgress = new Map();
@@ -88,7 +93,7 @@ function spinGacha() {
   return GACHA_POOL[0];
 }
 
-const PREFIX = 'z.';
+const PREFIX = 'z'; // Cú pháp lệnh bắt đầu bằng chữ z liền không có dấu chấm
 
 // --- CẤU HÌNH EMOJI & ẢNH GIVEAWAY ---
 const EMOJI_GA_ID = '1567468310419742810';
@@ -134,18 +139,19 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 8.1 AN CUT VIEN MAN LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 9.0 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
-  const contentLower = message.content.toLowerCase();
-  if (message.author.bot || !contentLower.startsWith(PREFIX)) return;
+  if (message.author.bot || !message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/);
+  // Cắt bỏ tiền tố z, nếu lệnh là zga thì sau khi shift command sẽ là 'ga'
+  const rawContent = message.content.slice(PREFIX.length).trim();
+  const args = rawContent.split(/ +/);
   const command = args.shift().toLowerCase();
 
   // ==========================================
-  // 🔇 1. TÍNH NĂNG MUTE (z.mute / Z.mute)
+  // 🔇 MUTE
   // ==========================================
   if (command === 'mute') {
     if (!isGAAdmin(message.member)) {
@@ -164,12 +170,12 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!targetUser) {
-      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Mute rồi gõ `z.mute <thời_gian> [lý_do]`');
+      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** rồi gõ `zmute <thời_gian> [lý_do]`');
     }
 
     const durationMs = parseCustomDuration(args[durationArgIndex]);
     if (!durationMs) {
-      return message.reply('❌ **Thời gian không hợp lệ!** Sử dụng: `s` (giây), `p` (phút), `h` (giờ), `d` (ngày). Ví dụ: `z.mute 10p`');
+      return message.reply('❌ **Thời gian không hợp lệ!** Sử dụng: `s`, `p`, `h`, `d`. Ví dụ: `zmute 10p`');
     }
 
     const reason = args.slice(durationArgIndex + 1).join(' ') || 'Không có lý do';
@@ -195,7 +201,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 🔊 1.1. TÍNH NĂNG UNMUTE (z.unmute / Z.unmute)
+  // 🔊 UNMUTE
   // ==========================================
   if (command === 'unmute') {
     if (!isGAAdmin(message.member)) {
@@ -214,7 +220,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!targetUser) {
-      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Unmute rồi gõ `z.unmute [lý_do]`');
+      return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zunmute [lý_do]`');
     }
 
     const reason = args.slice(reasonIndex).join(' ') || 'Không có lý do';
@@ -239,7 +245,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 🔨 2. TÍNH NĂNG BAN (z.ban / Z.ban)
+  // 🔨 BAN
   // ==========================================
   if (command === 'ban') {
     if (!isGAAdmin(message.member)) {
@@ -258,7 +264,7 @@ client.on('messageCreate', async (message) => {
     }
 
     if (!targetUser) {
-      return message.reply('❌ **Cú pháp:** `@mention người dùng` hoặc **Reply tin nhắn** cần Ban rồi gõ `z.ban [lý_do]`');
+      return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zban [lý_do]`');
     }
 
     const reason = args.slice(reasonIndex).join(' ') || 'Không có lý do';
@@ -283,7 +289,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // ⚖️ 3. TÍNH NĂNG PHẠT TÙ (z.tu / Z.tu)
+  // ⚖️ PHẠT TÙ (ztu)
   // ==========================================
   if (command === 'tu') {
     if (!isGAAdmin(message.member)) {
@@ -304,7 +310,7 @@ client.on('messageCreate', async (message) => {
     const amount = parseInt(args[amountIndex]);
 
     if (!targetUser || isNaN(amount) || amount <= 0) {
-      return message.reply('❌ **Cú pháp:** Reply tin nhắn hoặc Tag user rồi gõ `z.tu <số_lần_ăn_cút> [lý_do]` (Ví dụ: `z.tu 50 Spammer`)');
+      return message.reply('❌ **Cú pháp:** `ztu <số_lần_ăn_cút> [lý_do]`');
     }
 
     const reason = args.slice(amountIndex + 1).join(' ') || 'Không có lý do';
@@ -348,7 +354,7 @@ client.on('messageCreate', async (message) => {
         .setAuthor({ name: 'Tù ngay con chó', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(
           `• **Phạm nhân:** <@${targetUser.id}>\n` +
-          `• **Hình phạt:** Phải gõ \`z.ancut\` đủ **${amount} lần** tại kênh <#${JAIL_CHANNEL_ID}>\n` +
+          `• **Hình phạt:** Phải gõ \`zancut\` đủ **${amount} lần** tại kênh <#${JAIL_CHANNEL_ID}>\n` +
           `• **Người bắt:** <@${message.author.id}>\n` +
           `• **Lý do:** ${reason}`
         )
@@ -363,10 +369,10 @@ client.on('messageCreate', async (message) => {
           .setTitle('🚨 BẢNG HƯỚNG DẪN CẢI TẠO PHẠT TÙ 🚨')
           .setDescription(
             `Chào mừng <@${targetUser.id}> đến với phòng giam!\n\n` +
-            `• Để được tự do, bạn phải gõ lệnh \`z.ancut\` đúng **${amount} lần**.\n` +
+            `• Để được tự do, bạn phải gõ lệnh \`zancut\` đúng **${amount} lần**.\n` +
             `• **Tiến độ hiện tại:** \`0 / ${amount}\` lần.\n\n` +
-            `🔓 **Mẹo trốn tù:** Bạn có thể type \`z.tron\` để có cơ hội trốn thoát (tỷ lệ thành công **20%**).\n` +
-            `⚠️ **Cảnh báo:** Nếu trốn thất bại liên tiếp **3 lần**, hình phạt của bạn sẽ bị **NHÂN ĐÔI** số lần \`z.ancut\`!`
+            `🔓 **Mẹo trốn tù:** Bạn có thể type \`ztron\` để có cơ hội trốn thoát (tỷ lệ thành công **20%**).\n` +
+            `⚠️ **Cảnh báo:** Nếu trốn thất bại liên tiếp **3 lần**, hình phạt của bạn sẽ bị **NHÂN ĐÔI** số lần \`zancut\`!`
           )
           .setColor(0xC7A9C9);
 
@@ -380,7 +386,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 🔓 3.1. TÍNH NĂNG TRỐN TÙ (z.tron)
+  // 🔓 TRỐN TÙ (ztron)
   // ==========================================
   if (command === 'tron') {
     const userId = message.author.id;
@@ -407,15 +413,15 @@ client.on('messageCreate', async (message) => {
         const escapeEmbed = new EmbedBuilder()
           .setTitle('🏃‍♂️ VƯỢT NGỤC THÀNH CÔNG XUẤT SẮC!')
           .setDescription(
-            `• Phạm nhân <@${userId}> đã tính toán như thần và vượt ngục thành công ngỡ ngàng!\n` +
-            `• Bạn đã được tự do, khôi phục toàn bộ quyền hạn mà không cần phải gõ \`z.ancut\` nữa!`
+            `• Phạm nhân <@${userId}> đã vượt ngục thành công xuất sắc!\n` +
+            `• Bạn đã được tự do, khôi phục toàn bộ quyền hạn mà không cần gõ \`zancut\` nữa!`
           )
           .setColor(0xF1C40F);
 
         return message.channel.send({ content: `<@${userId}>`, embeds: [escapeEmbed] });
       } catch (err) {
         console.error(err);
-        return message.reply('🏃‍♂️ Bạn trốn thành công nhưng xảy ra lỗi khi khôi phục role, hãy báo Admin!');
+        return message.reply('🏃‍♂️ Bạn trốn thành công nhưng xảy ra lỗi khi khôi phục role!');
       }
     } else {
       pData.failTronCount += 1;
@@ -424,13 +430,13 @@ client.on('messageCreate', async (message) => {
       if (pData.failTronCount >= 3) {
         pData.required *= 2;
         pData.failTronCount = 0;
-        extraWarning += `\n\n🚨 **QUÁ TAM BA BẬN!** Bạn bị canh ngục tóm được và đập cho tơi tả, hình phạt đã bị **NHÂN ĐÔI** thành **${pData.required} lần** \`z.ancut\`!`;
+        extraWarning += `\n\n🚨 **QUÁ TAM BA BẬN!** Bạn bị bắt quả tang, hình phạt bị **NHÂN ĐÔI** thành **${pData.required} lần** \`zancut\`!`;
       }
 
       const failTronEmbed = new EmbedBuilder()
         .setAuthor({ name: '🚨 VƯỢT NGỤC BẤT THÀNH', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setDescription(
-          `> Phạm nhân <@${userId}> định trốn cửa sau nhưng bị gác ngục bắt quả tang!\n\n` +
+          `> Phạm nhân <@${userId}> định trốn cửa sau nhưng bị gác ngục bắt giữ!\n\n` +
           `${extraWarning}\n` +
           `• 📌 **Tiến độ hiện tại:** \`${pData.current} / ${pData.required}\` lần.`
         )
@@ -441,22 +447,21 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 💩 4. LỆNH ĂN CÚT ĐỂ RA TÙ (z.ancut) + 20% ĂN CỨT VIÊN MÃN & TRÊU NGƯƠI
+  // 💩 ĂN CÚT (zancut) + 20% ĂN CỨT VIÊN MÃN
   // ==========================================
   if (command === 'ancut') {
     const userId = message.author.id;
     if (!jailData.has(userId)) {
-      return message.reply('❌ **Bạn đâu có bị phạt tù đâu mà đòi ăn cút!**');
+      return message.reply('❌ **Bạn đâu có bị phạt tù đâu!**');
     }
 
     const pData = jailData.get(userId);
 
-    // Tỉ lệ 20% kích hoạt "Ăn cứt viên mãn" (trừ thẳng 2 lần)
+    // Tỉ lệ 20% Ăn Cứt Viên Mãn (trừ thẳng 2 lần)
     const isVienMan = Math.random() * 100 < 20;
     const addedCount = isVienMan ? 2 : 1;
     pData.current += addedCount;
 
-    // Lấy ngẫu nhiên 1 câu trêu ngươi trong 20 câu
     const randomTaunt = TAUNT_MESSAGES[Math.floor(Math.random() * TAUNT_MESSAGES.length)];
 
     if (pData.current >= pData.required) {
@@ -475,8 +480,8 @@ client.on('messageCreate', async (message) => {
         const freeEmbed = new EmbedBuilder()
           .setTitle('🎉 CHÚC MỪNG BẠN ĐÃ ĐƯỢC MÃ HẠN TÙ!')
           .setDescription(
-            `• Phạm nhân <@${userId}> đã hoàn tất **${pData.required}/${pData.required}** lần \`z.ancut\`!\n` +
-            `• Bạn đã chính thức được tự do và khôi phục lại các quyền hạn ban đầu.\n\n` +
+            `• Phạm nhân <@${userId}> đã hoàn tất **${pData.required}/${pData.required}** lần \`zancut\`!\n` +
+            `• Bạn đã chính thức được tự do.\n\n` +
             `*Lời nhắn lúc về:* "${randomTaunt}"`
           )
           .setColor(0x2ECC71);
@@ -484,7 +489,7 @@ client.on('messageCreate', async (message) => {
         return message.channel.send({ content: `<@${userId}>`, embeds: [freeEmbed] });
       } catch (err) {
         console.error(err);
-        return message.reply('🎉 Bạn đã hoàn thành án tù nhưng có lỗi khi khôi phục Role, vui lòng báo Admin!');
+        return message.reply('🎉 Bạn đã hoàn thành án tù nhưng có lỗi khi khôi phục Role!');
       }
     } else {
       let vienManText = isVienMan ? `\n\n🌟 **ĂN CỨT VIÊN MÃN!** Quá trình thưởng thức cực kỳ thăng hoa, hệ thống thưởng nóng trừ thẳng **2 lần** luôn!` : '';
@@ -495,7 +500,7 @@ client.on('messageCreate', async (message) => {
           `> Phạm nhân <@${userId}> vừa thực hiện một nhát sám hối!\n` +
           `> *"${randomTaunt}"*\n` +
           `${vienManText}\n\n` +
-          `• 📌 **Tiến độ cải tạo:** \`${pData.current} / ${pData.required}\` lần \`z.ancut\`.\n` +
+          `• 📌 **Tiến độ cải tạo:** \`${pData.current} / ${pData.required}\` lần \`zancut\`.\n` +
           `• ⏳ **Còn thiếu:** \`${pData.required - pData.current}\` lần nữa!`
         )
         .setColor(0xC7A9C9);
@@ -504,74 +509,59 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 5. LỆNH RANDOM ROLE (z.rdrole / Z.rdrole) ---
+  // ==========================================
+  // 💎 HÒM BÁU VẬT RANDOM ROLE (zrdrole) - Giao diện mới
+  // ==========================================
   if (command === 'rdrole') {
     if (!message.member.roles.cache.has(REQUIRED_ROLE_ID)) {
-      return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Random Role!**`);
+      return message.reply(`❌ **Bạn cần sở hữu Role <@&${REQUIRED_ROLE_ID}> mới có thể tham gia Khai Mở Kho Báu!**`);
     }
 
     try {
       const result = spinGacha();
       const userId = message.author.id;
+      const userName = message.author.username;
+
+      // Danh sách 6 mẫu câu trượt (ảnh d5b223)
+      const failStories = [
+        {
+          title: "1.Suýt Chạm Tay Đến Báu Vật!",
+          desc: `Người chơi <@${userId}> vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!`
+        },
+        {
+          title: "2.Báu Vật Suýt Được Khai Mở!",
+          desc: `Người chơi <@${userId}> vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\nLời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!`
+        },
+        {
+          title: "3.Chìa Khóa Chưa Tìm Được Ổ!",
+          desc: `Người chơi <@${userId}> đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\nLời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!`
+        },
+        {
+          title: "4.Báu Vật Vẫn Đang Ẩn Mình!",
+          desc: `Người chơi <@${userId}> vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\nLời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!`
+        },
+        {
+          title: "5.Định Mệnh Chưa Gọi Tên!",
+          desc: `Người chơi <@${userId}> đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\nLời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!`
+        },
+        {
+          title: "6.Ngai Vàng Vẫn Chưa Có Chủ!",
+          desc: `Người chơi <@${userId}> vừa bỏ lỡ cơ hội chạm tay đến danh vị quý giá!\n\nLời nhắn: Vương miện vẫn đang đợi chủ nhân xứng đáng. Hãy tiếp tục thử vận may nhé!`
+        }
+      ];
 
       if (result.id === null) {
-        const outerFailMessages = [
-          `✨ Cậu chủ <@${userId}> ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><! Thử lại nha!`,
-          `🌸 Cậu chủ <@${userId}> hông được nản nha, vòng quay đang tích năng lượng để dành quà bự cho cậu đó!`,
-          `🥺 Hic, tý nữa là cậu chủ <@${userId}> ẵm được Role xịn rùi... Thử lại cái nữa xem sao nè!`,
-          `✨ Cậu chủ <@${userId}> đừng buồn nhen, lượt này nhường xíu thôi chứ lượt sau là nổ hũ chắc luôn!`,
-          `🎀 Ôm cậu chủ <@${userId}> một cái nè~ May mắn đang trên đường đến rồi, làm lượt nữa thôi nào!`,
-          `💫 Suýt chút nữa là cậu chủ <@${userId}> rinh được Role rùi á! Thêm 1 lần nữa cho nó máu nhen!`,
-          `🌷 Cậu chủ <@${userId}> ơi chớ vội nản, hũ ngon phải tích tụ lâu một xíu mới nổ to rực rỡ nè!`,
-          `🍧 Thiếu có chút xíu tẹo teo thôi hà cậu chủ <@${userId}> ơi, bấm thử thêm phát nữa đi mà~`,
-          `🌟 May mắn của cậu chủ <@${userId}> đang kẹt xe một chút xíu thôi, gõ thêm lệnh nữa là tới liền!`,
-          `💖 Cậu chủ <@${userId}> dễ thương thế này chắc chắn lượt sau vũ trụ sẽ độ tràn bờ đê luôn!`,
-          `🍀 Vòng quay thử thách độ kiên nhẫn của cậu chủ <@${userId}> xíu thôi, cố lên lượt nữa nhen!`,
-          `🦄 Cậu chủ <@${userId}> ơi, nhân phẩm đỉnh cao sắp xuất hiện rùi, thử lại lần nữa xem sao nè!`,
-          `🍬 Hông có sao hết á cậu chủ <@${userId}> ơi, đ keo này ta bày keo khác nha, chiến tiếp thôi!`,
-          `🍰 Suýt nữa là lượm lúa rùi cậu chủ <@${userId}> ơi! Thử lại liền tay vận may sẽ đến nè!`,
-          `🎁 Cậu chủ <@${userId}> ơi hít một hơi thật sâu rồi làm lại quả nhấp siêu phẩm nữa nào!`
-        ];
-
-        const innerFailMessages = [
-          "Cậu chủ ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><!",
-          "Nhân phẩm của cậu chủ đang nạp năng lượng đó, lượt sau chắc chắn đỏ lềnh lềnh luôn!",
-          "Đừng nản lòng nha cậu chủ ơi, vũ trụ đang chuẩn bị quà bự hơn cho cậu đó~",
-          "Thêm một tí tẹo may mắn nữa thôi là Role về tay cậu chủ rùi, thử lại nha!",
-          "Hơi tiếc một xíu xiu thôi nè, nhưng mà lượt quay tiếp theo nhất định sẽ bùng nổ!",
-          "Tay cậu chủ hôm nay thơm lắm rùi, chỉ thiếu 1 milimet may mắn nữa thôi á!",
-          "Vòng quay chỉ đang dạo đầu xíu thôi, siêu phẩm rực rỡ đang đợi cậu chủ ở lượt sau nè!",
-          "Năng lượng may mắn đang tích tụ cực đại, lượt tới bấm phát là dính liền nhen cậu chủ!",
-          "Một chút kiên trì sẽ mang lại phần thưởng xứng đáng nhất cho cậu chủ đó nha~",
-          "Hôm nay trời đẹp thế này kiểu gì lượt tới cậu chủ cũng nổ hũ siêu to cho xem!",
-          "Chỉ là chút thử thách nhỏ của hệ thống thôi, cậu chủ cứ tự tin thử lại nhen!",
-          "Tấm vé trúng thưởng đang nằm ngay lượt tiếp theo kìa cậu chủ ơi, bấm liền đi nè!",
-          "Cậu chủ tỏa ra năng lượng chiến thắng rùi đó, thử lại phát nữa là lượm Role ngay!",
-          "Không sao hết nè, thần may mắn đang đứng ngay sau lưng cổ vũ cậu chủ đó nha!",
-          "Tích tiểu thành đại, lượt sau nhất định cậu chủ sẽ khiến cả server trầm trồ!"
-        ];
-
-        const randomOuter = outerFailMessages[Math.floor(Math.random() * outerFailMessages.length)];
-        const randomInner = innerFailMessages[Math.floor(Math.random() * innerFailMessages.length)];
+        const selectedFail = failStories[Math.floor(Math.random() * failStories.length)];
 
         const failEmbed = new EmbedBuilder()
-          .setAuthor({ 
-            name: '🎲 VÒNG QUAY RANDOM ROLE', 
-            iconURL: message.author.displayAvatarURL({ dynamic: true }) 
-          })
-          .setTitle('✨ Suýt Nữa Thì Trúng Rùi!')
-          .setDescription(
-            `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
-            `• 💫 **Lời nhắn:** ${randomInner}`
-          )
+          .setAuthor({ name: '˚·.¸¸.💎 ¸¸.·° \nROYAL TREASURES', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+          .setTitle(selectedFail.title)
+          .setDescription(selectedFail.desc)
           .setColor(0xC7A9C9)
-          .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
+          .setFooter({ text: 'Zeithaven · The Royal Collection', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
-        return message.channel.send({
-          content: randomOuter,
-          embeds: [failEmbed]
-        });
+        return message.channel.send({ embeds: [failEmbed] });
       }
 
       if (!userGachaProgress.has(userId)) {
@@ -582,8 +572,7 @@ client.on('messageCreate', async (message) => {
       userProgress[result.level] += 1;
 
       let isRoleAwarded = false;
-      let outerMsg = "";
-      let innerDesc = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
+      let storageStatus = "";
 
       if (userProgress[result.level] >= 2) {
         isRoleAwarded = true;
@@ -593,76 +582,45 @@ client.on('messageCreate', async (message) => {
           console.error("Lỗi cấp Role:", err);
         });
 
-        const winOuterList = [
-          `🎉 CHÚC MỪNGGG! Cậu chủ <@${userId}> đã tích đủ 2/2 và rinh trọn vẹn Role <@&${result.id}> rùi nè! 👑`,
-          `🔥 BÙNG NỔ NHÂN PHẨM! Cậu chủ <@${userId}> xuất sắc ẵm thành công Role <@&${result.id}> siêu xịn! ✨`,
-          `👑 Cả server dạt ra cho cậu chủ <@${userId}> tỏa sáng nào! Role <@&${result.id}> đã về tay chính chủ rùi! 🥳`,
-          `🎉 Quá đẳng cấp cậu chủ <@${userId}> ơi! Hệ thống đã trao tận tay Role <@&${result.id}> cho cậu rùi nhen!`,
-          `💖 Tuyệt vời ông mặt trời! Cậu chủ <@${userId}> đã chinh phục thành công Role <@&${result.id}> rùi nè~`
-        ];
-
-        const winInnerList = [
-          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Hệ thống đã tự động đeo Role **<@&${result.id}>** cực ngầu cho cậu chủ rùi đó! 🎉`,
-          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Sự kiên trì của cậu chủ đã được đền đáp xứng đáng bằng Role **<@&${result.id}>** siêu phẩm!`,
-          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Chúc mừng cậu chủ đã trở thành chủ nhân chính thức của Role **<@&${result.id}>**!`,
-          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Nhân phẩm đỉnh cao đã đưa Role **<@&${result.id}>** về ngay hồ sơ của cậu chủ rùi nè!`,
-          `• 🔥 **TÍCH LŨY ĐỦ 2 LẦN!** Đã hoàn tất cấp Role **<@&${result.id}>** cho cậu chủ tỏa sáng khắp server!`
-        ];
-
-        outerMsg = winOuterList[Math.floor(Math.random() * winOuterList.length)];
-        innerDesc += winInnerList[Math.floor(Math.random() * winInnerList.length)];
-
+        storageStatus = "Đã được add role thành công";
       } else {
-        const progressOuterList = [
-          `✨ Woohoo~ Cậu chủ <@${userId}> vừa hốt được 1 mảnh **<@&${result.id}>** rùi nha! Cố thêm phát nữa nè!`,
-          `🌸 Tay thơm ghê chưa! Cậu chủ <@${userId}> đã thu thập được 1/2 **<@&${result.id}>** rùi á~`,
-          `🎀 Nhân phẩm nổ nhẹ! Cậu chủ <@${userId}> vừa lượm được mảnh **<@&${result.id}>** đầu tiên nè!`,
-          `💫 Chút nữa thôi cậu chủ <@${userId}> ơi! Đã có 1/2 **<@&${result.id}>** trong tay rùi đó!`,
-          `🍧 Đỉnh quá cậu chủ <@${userId}> ơi~ 1 mảnh **<@&${result.id}>** đã về đội, làm lượt nữa để chốt sổ nhen!`
-        ];
-
-        const progressInnerList = [
-          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Cậu chủ ơi, cố lên thêm một lượt nữa thôi là Role về tay rùi!*`,
-          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Nhân phẩm đang lên cao trào, cậu chủ làm thêm cú nhấp nữa cho rực rỡ nhen!*`,
-          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Còn đúng 1 bước ngắn nữa thôi là cậu chủ rinh trọn vẹn Role rùi á~*`,
-          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Vũ trụ đang gửi tín hiệu chúc mừng, cậu chủ tự tin thử tiếp nha!*`,
-          `• 📌 **Tiến độ tích lũy:** \`1 / 2 lần\` quay trúng loại này.\n*Tích được nửa đường rùi, lượt quay tới nhất định sẽ là cú nổ siêu to!*`
-        ];
-
-        outerMsg = progressOuterList[Math.floor(Math.random() * progressOuterList.length)];
-        innerDesc += progressInnerList[Math.floor(Math.random() * progressInnerList.length)];
+        storageStatus = `1 / 2 lần (Chưa đủ điều kiện add role)`;
       }
 
       const successEmbed = new EmbedBuilder()
-        .setAuthor({ 
-          name: '🎲 VÒNG QUAY RANDOM ROLE', 
-          iconURL: message.author.displayAvatarURL({ dynamic: true }) 
-        })
-        .setTitle(isRoleAwarded ? '🎉 CHÚC MỪNG ĐÃ NHẬN ĐƯỢC ROLE!' : '✨ QUAY TRÚNG MẢNH ROLE!')
-        .setDescription(innerDesc)
+        .setAuthor({ name: '˚·.¸¸.💎 ¸¸.·° \nROYAL TREASURES', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setTitle('✦ °.·-• Chúc Mừng Đã Tìm Thấy Bảo Vật! •-·.° ✦')
+        .setDescription(
+          `Nhà Sưu Tầm <@${userId}> vừa khai mở thành công chiếc rương báu và tìm thấy một bảo vật quý giá!\n\n` +
+          `Bảo vật nhận được: <@&${result.id}>\n` +
+          `Tiến độ tích lũy: ${storageStatus}\n\n` +
+          `˚·.¸¸.👑 ¸¸.·° \n\n` +
+          `*Royal Treasures*\n` +
+          `Zeithaven · The Royal Collection\n\n` +
+          `Một báu vật đã tìm thấy chủ nhân. 🤍`
+        )
         .setColor(0xC7A9C9)
-        .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
+        .setFooter({ text: 'Royal Treasures • Zeithaven', iconURL: client.user.displayAvatarURL() })
         .setTimestamp();
 
-      return message.channel.send({
-        content: outerMsg,
-        embeds: [successEmbed]
-      });
+      return message.channel.send({ embeds: [successEmbed] });
 
     } catch (err) {
       console.error(err);
-      return message.reply('❌ Đã xảy ra lỗi trong quá trình Random Role, vui lòng báo Admin kiểm tra quyền của Bot!');
+      return message.reply('❌ Đã xảy ra lỗi trong quá trình Khai Mở Kho Báu!');
     }
   }
 
-  // --- 6. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
+  // ==========================================
+  // 🔄 REROLL GIVEAWAY (zgarr)
+  // ==========================================
   if (command === 'garr') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
     }
 
     if (!message.reference || !message.reference.messageId) {
-      return message.reply('❌ **Bạn phải reply (phản hồi) vào tin nhắn bài giveaway cần reroll rồi mới gõ `z.garr`!**');
+      return message.reply('❌ **Bạn phải reply vào tin nhắn giveaway cần reroll rồi mới gõ `zgarr`!**');
     }
 
     try {
@@ -678,14 +636,14 @@ client.on('messageCreate', async (message) => {
                        targetMsg.reactions.cache.first();
 
       if (!reaction) {
-        return message.reply('❌ Không tìm thấy lượt thả emoji tham gia nào ở bài giveaway này!');
+        return message.reply('❌ Không tìm thấy lượt thả emoji tham gia!');
       }
 
       let users = await reaction.users.fetch();
       let validUsers = users.filter(u => !u.bot);
 
       if (validUsers.size === 0) {
-        return message.reply('❌ Không có người chơi hợp lệ nào khác tham gia bài giveaway này!');
+        return message.reply('❌ Không có người chơi hợp lệ nào khác!');
       }
 
       let oldWinnersIds = new Set();
@@ -710,22 +668,15 @@ client.on('messageCreate', async (message) => {
       const newWinnerId = availablePool[randomIndex];
       const newWinnerMention = `<@${newWinnerId}>`;
 
-      const oldTitle = targetMsg.embeds[0]?.title || 'WINE GIVEAWAY';
+      // Lấy tên phần thưởng từ embed cũ nếu có
+      let prizeName = "món quà";
+      if (targetMsg.embeds.length > 0 && targetMsg.embeds[0].title) {
+        prizeName = targetMsg.embeds[0].title;
+      }
 
-      const rerollEmbed = new EmbedBuilder()
-        .setAuthor({ name: '🔄 REROLL NGƯỜI THẮNG DẠ TIỆC', iconURL: message.guild.iconURL({ dynamic: true }) })
-        .setTitle(oldTitle)
-        .setDescription(
-          `> Người trúng trước đó không hợp lệ hoặc không nhận quà, hệ thống đã chọn vị khách mới!\n\n` +
-          `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
-          `• 🏆 **Vị khách chiến thắng mới:** ${newWinnerMention}`
-        )
-        .setColor(0xC7A9C9)
-        .setTimestamp();
-
+      // Gửi dạng text hoàn toàn không kèm embed/bảng theo yêu cầu
       return message.channel.send({
-        content: `🔄 **REROLL!** Chúc mừng vị khách ${newWinnerMention} đã may mắn được lựa chọn thay thế!`,
-        embeds: [rerollEmbed]
+        content: `˚₊‧⊹  Hương vị thay đổi, xin chúc mừng ${newWinnerMention} trở thành chủ nhân mới của món quà ${prizeName}…⊹‧₊˚`
       });
 
     } catch (err) {
@@ -734,21 +685,23 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 7. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
+  // ==========================================
+  // 🛑 END GIVEAWAY SỚM (zend)
+  // ==========================================
   if (command === 'end') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
     }
 
     if (!message.reference || !message.reference.messageId) {
-      return message.reply('❌ **Bạn phải reply (phản hồi) vào bài giveaway đang chạy rồi mới gõ `z.end`!**');
+      return message.reply('❌ **Bạn phải reply vào bài giveaway đang chạy rồi mới gõ `zend`!**');
     }
 
     const targetMsgId = message.reference.messageId;
     const gaData = activeGiveaways.get(targetMsgId);
 
     if (!gaData) {
-      return message.reply('❌ **Không tìm thấy bài Giveaway đang chạy nào ở tin nhắn này** (có thể nó đã kết thúc từ trước rồi)!');
+      return message.reply('❌ **Không tìm thấy bài Giveaway đang chạy ở tin nhắn này**!');
     }
 
     try {
@@ -764,7 +717,9 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 8. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
+  // ==========================================
+  // 🎉 TẠO GIVEAWAY (zga)
+  // ==========================================
   if (command === 'ga') {
     if (!isGAAdmin(message.member)) {
       return message.reply(`❌ **Bạn không có quyền quản lý Giveaway!**`);
@@ -772,20 +727,16 @@ client.on('messageCreate', async (message) => {
 
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
-        .setAuthor({ 
-          name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', 
-          iconURL: client.user.displayAvatarURL() 
-        })
+        .setAuthor({ name: '📖 HƯỚNG DẪN SỬ DỤNG LỆNH GIVEAWAY', iconURL: client.user.displayAvatarURL() })
         .setTitle('✨ Cách tạo GiveAway')
         .setDescription(
-          `> \`z.ga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
+          `> \`zga <id_role/none> <số_giải> <thời_gian> [số_lượng_ga] <nội_dung>\`\n\n` +
           `• 🌐 **Mở cho tất cả mọi người:**\n` +
-          `  \`z.ga none 1 30s 1 tỷ\`\n\n` +
+          `  \`zga none 1 30s 1 tỷ\`\n\n` +
           `• 📌 **Tag trực tiếp Role:**\n` +
-          `  \`z.ga @Role 1 12h Nitro\``
+          `  \`zga @Role 1 12h Nitro\``
         )
-        .setColor(0xC7A9C9)
-        .setFooter({ text: 'Hệ thống Giveaway • Emc4' });
+        .setColor(0xC7A9C9);
 
       return message.reply({ embeds: [helpEmbed] });
     }
@@ -825,10 +776,10 @@ client.on('messageCreate', async (message) => {
     prize = args.slice(currentIndex).join(' ');
 
     if (!winnerCount || winnerCount < 1) {
-      return message.reply('❌ **Thiếu số lượng giải!** Vui lòng kiểm tra lại cú pháp.');
+      return message.reply('❌ **Thiếu số lượng giải!**');
     }
     if (!durationMs) {
-      return message.reply('❌ **Thời gian không hợp lệ!** Dùng: `s`, `p`, `h`, `d`.');
+      return message.reply('❌ **Thời gian không hợp lệ!**');
     }
     if (!prize) {
       return message.reply('❌ **Chưa nhập nội dung giveaway!**');
@@ -899,12 +850,12 @@ client.on('messageCreate', async (message) => {
           validUsers = filteredMap;
         }
 
+        // KHI KHÔNG CÓ AI THAM GIA HOẶC KHÔNG PICK ĐƯỢC: Giữ nguyên bảng embed gốc và gửi text ngoài kênh
         if (validUsers.size === 0) {
-          const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-            .setTitle(`❌ [ĐÃ KẾT THÚC] WINE GIVEAWAY`)
-            .setDescription(`> Không có vị khách hợp lệ nào tham gia dạ tiệc này!`)
-            .setColor(0xED4245);
-          return fetchedMsg.edit({ embeds: [endEmbed] });
+          await message.channel.send({
+            content: `˚₊‧⊹  Dạ tiệc kết thúc, món quà ${prize} vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚`
+          });
+          return;
         }
 
         const pool = [];
@@ -940,31 +891,9 @@ client.on('messageCreate', async (message) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        const endEmbed = EmbedBuilder.from(fetchedMsg.embeds[0])
-          .setTitle(`🏆 [ĐÃ KẾT THÚC] WINE GIVEAWAY`)
-          .setDescription(
-            `> Dạ tiệc đã khép lại thành công!\n\n` +
-            `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
-            `• 🎉 **Vị khách may mắn chiến thắng:** ${winnerMentions}`
-          )
-          .setColor(0xC7A9C9);
-
-        await fetchedMsg.edit({ embeds: [endEmbed] });
-
-        const winAnnounceEmbed = new EmbedBuilder()
-          .setAuthor({ name: '🎉 KẾT QUẢ DẠ TIỆC WINE GIVEAWAY 🎉', iconURL: message.guild.iconURL({ dynamic: true }) })
-          .setTitle(`🍷 Phần thưởng: ${prize}`)
-          .setDescription(
-            `> Chúc mừng vị khách quý ${winnerMentions} đã may mắn nhận được phần quà từ dạ tiệc của chủ tiệc <@${message.author.id}>!\n\n` +
-            `• <:emoji_11:1567468310419742810> **Chủ Tiệc:** <@${message.author.id}>\n` +
-            `• 🏆 **Người trúng giải:** ${winnerMentions}`
-          )
-          .setColor(0xC7A9C9)
-          .setTimestamp();
-
-        message.channel.send({ 
-          content: `🎉 Chúc mừng ${winnerMentions} đã rinh thành công **${prize}** từ dạ tiệc của <@${message.author.id}>!`, 
-          embeds: [winAnnounceEmbed] 
+        // Gửi dòng tin nhắn thông báo trúng giải chính thức theo đúng định dạng yêu cầu (Không kèm bảng/embed)
+        return message.channel.send({
+          content: `˚₊‧⊹  Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà ${prize} …. ⊹‧₊˚`
         });
       };
 
