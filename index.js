@@ -30,6 +30,9 @@ const ROLE_ENTRIES = {
 // --- CẤU HÌNH GACHA RANDOM ROLE ---
 const REQUIRED_ROLE_ID = '1425167156668141728';
 
+// --- CẤU HÌNH ROLE ĐƯỢC PHÉP QUẢN LÝ GIVEAWAY (Tạo, Reroll, End) ---
+const GA_MANAGER_ROLE_ID = '1393170229072367758';
+
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
   { id: '1393170229072367758', weight: 25, name: 'Role Cấp 5',         level: 5 },
@@ -40,9 +43,6 @@ const GACHA_POOL = [
 ];
 
 const userGachaProgress = new Map();
-
-// Bộ nhớ theo dõi các bài GA đang hoạt động để phục vụ z.end
-// Cấu trúc: Map<messageId, { endGaFunction, timeoutId, intervalId }>
 const activeGiveaways = new Map();
 
 function spinGacha() {
@@ -104,7 +104,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 6.3 END GA LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 6.4 GA ROLE SECURITY LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -265,8 +265,12 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) ---
+  // --- 2. LỆNH REROLL GIVEAWAY (z.garr / Z.garr) - YÊU CẦU ROLE QUẢN LÝ ---
   if (command === 'garr') {
+    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    }
+
     if (!message.reference || !message.reference.messageId) {
       return message.reply('❌ **Bạn phải reply (phản hồi) vào tin nhắn bài giveaway cần reroll rồi mới gõ `z.garr`!**');
     }
@@ -340,8 +344,12 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) ---
+  // --- 3. LỆNH END GIVEAWAY SỚM (z.end / Z.end) - YÊU CẦU ROLE QUẢN LÝ ---
   if (command === 'end') {
+    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    }
+
     if (!message.reference || !message.reference.messageId) {
       return message.reply('❌ **Bạn phải reply (phản hồi) vào bài giveaway đang chạy rồi mới gõ `z.end`!**');
     }
@@ -355,11 +363,9 @@ client.on('messageCreate', async (message) => {
 
     try {
       await message.delete().catch(() => {});
-      // Hủy bộ đếm thời gian đang chạy ngầm
       clearTimeout(gaData.timeoutId);
       clearInterval(gaData.intervalId);
 
-      // Kích hoạt hàm chốt người thắng ngay lập tức
       await gaData.endGaFunction();
       activeGiveaways.delete(targetMsgId);
     } catch (err) {
@@ -368,8 +374,12 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) ---
+  // --- 4. LỆNH GA (GIVEAWAY - z.ga / Z.ga) - YÊU CẦU ROLE QUẢN LÝ ---
   if (command === 'ga') {
+    if (!message.member.roles.cache.has(GA_MANAGER_ROLE_ID)) {
+      return message.reply(`❌ **Bạn không có quyền quản lý Giveaway! Cần sở hữu Role <@&${GA_MANAGER_ROLE_ID}> mới được dùng lệnh này.**`);
+    }
+
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
         .setAuthor({ 
@@ -441,7 +451,7 @@ client.on('messageCreate', async (message) => {
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
-      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
+      const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐸𝐴𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
         return new EmbedBuilder()
@@ -475,7 +485,6 @@ client.on('messageCreate', async (message) => {
         }
       }, 5000);
 
-      // --- HÀM XỬ LÝ KHI KẾT THÚC GA (CHẠY TỰ ĐỘNG HOẶC KHI GÕ z.end) ---
       const endGaFunction = async () => {
         clearInterval(interval);
         activeGiveaways.delete(gaMessage.id);
@@ -508,7 +517,6 @@ client.on('messageCreate', async (message) => {
           return fetchedMsg.edit({ embeds: [endEmbed] });
         }
 
-        // TÍNH TOÁN BONUS ENTRIES NGẦM CHUẨN ĐÉT
         const pool = [];
         for (const [userId] of validUsers) {
           let baseEntries = 1;
@@ -572,7 +580,6 @@ client.on('messageCreate', async (message) => {
 
       const timeoutId = setTimeout(endGaFunction, durationMs);
 
-      // Lưu lại thông tin để xử lý khi người dùng type z.end / Z.end
       activeGiveaways.set(gaMessage.id, {
         endGaFunction,
         timeoutId,
