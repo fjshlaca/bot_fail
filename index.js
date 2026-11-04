@@ -27,7 +27,7 @@ const ROLE_ENTRIES = {
   '1393170229072367758': 4
 };
 
-// --- CẤU HÌNH GACHA RANDOM ROLE MỚI (z.rdrole) ---
+// --- CẤU HÌNH GACHA RANDOM ROLE (z.rdrole) ---
 const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
 
 // Danh sách các phần thưởng Gacha (id: null nghĩa là Chúc may mắn lần sau - không được gì)
@@ -41,7 +41,6 @@ const GACHA_POOL = [
 ];
 
 // Bộ nhớ lưu số lần tích lũy của từng user cho mỗi cấp role
-// Cấu trúc: { userId: { 5: số_lần_c5, 4: số_lần_c4, 3: số_lần_c3, 2: số_lần_c2, 1: số_lần_c1 } }
 const userGachaProgress = new Map();
 
 // Hàm quay gacha ngẫu nhiên theo tỷ lệ trọng số
@@ -102,7 +101,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.0 GACHA PITY LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.1 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -121,24 +120,24 @@ client.on('messageCreate', async (message) => {
       const result = spinGacha();
       const userId = message.author.id;
 
-      // Nếu quay trúng "Chúc may mắn lần sau" (id: null)
+      // Nếu quay trúng "Chúc may mắn lần sau" (id: null) -> Ẩn tỉ lệ, khích lệ người chơi
       if (result.id === null) {
         const failEmbed = new EmbedBuilder()
           .setAuthor({ 
             name: '🎲 VÒNG QUAY RANDOM ROLE', 
             iconURL: message.author.displayAvatarURL({ dynamic: true }) 
           })
-          .setTitle('😢 Rất Tiếc, Chúc May Mắn Lần Sau!')
+          .setTitle('✨ Suýt Nữa Thì Trúng Rồi!')
           .setDescription(
-            `> Người chơi <@${userId}> vừa quay nhưng không trúng gì cả (65% tỉ lệ trắng tay)...\n\n` +
-            `• ❌ **Kết quả:** Trượt rồi, không lượm được gì hết!`
+            `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
+            `• 💫 **Lời nhắn:** Nhân phẩm đang nạp điện, lượt sau chắc chắn đỏ hơn nhé cậu ơi!`
           )
-          .setColor(0xED4245)
+          .setColor(0xE67E22)
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
         return message.channel.send({
-          content: `😢 <@${userId}> quay ra ô **Chúc may mắn lần sau**! Đen thôi đỏ quên đi.`,
+          content: `✨ <@${userId}> vừa suýt quay trúng Role! Thử lại lượt nữa xem sao nhé!`,
           embeds: [failEmbed]
         });
       }
@@ -149,17 +148,15 @@ client.on('messageCreate', async (message) => {
       }
 
       const userProgress = userGachaProgress.get(userId);
-      userProgress[result.level] += 1; // Tăng số lần trúng role này lên 1
+      userProgress[result.level] += 1;
 
       let isRoleAwarded = false;
       let descriptionText = `> Người chơi <@${userId}> vừa quay trúng **<@&${result.id}>** (${result.name})!\n\n`;
 
-      // Kiểm tra xem đã đủ 2 lần chưa
       if (userProgress[result.level] >= 2) {
         isRoleAwarded = true;
-        userProgress[result.level] = 0; // Reset về 0 sau khi nhận role
+        userProgress[result.level] = 0; // Reset tích lũy sau khi cấp role
 
-        // Thực tế add role cho user
         await message.member.roles.add(result.id).catch((err) => {
           console.error("Lỗi cấp Role:", err);
         });
