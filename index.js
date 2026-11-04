@@ -30,7 +30,6 @@ const ROLE_ENTRIES = {
 // --- CẤU HÌNH GACHA RANDOM ROLE (z.rdrole) ---
 const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới được roll
 
-// Danh sách các phần thưởng Gacha (id: null nghĩa là Chúc may mắn lần sau - không được gì)
 const GACHA_POOL = [
   { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
   { id: '1393170229072367758', weight: 25, name: 'Role Cấp 5',         level: 5 },
@@ -40,10 +39,8 @@ const GACHA_POOL = [
   { id: '1393150502157680761', weight: 1,  name: 'Role Cấp 1',         level: 1 }
 ];
 
-// Bộ nhớ lưu số lần tích lũy của từng user cho mỗi cấp role
 const userGachaProgress = new Map();
 
-// Hàm quay gacha ngẫu nhiên theo tỷ lệ trọng số
 function spinGacha() {
   const rand = Math.random() * 100;
   let cumulative = 0;
@@ -101,7 +98,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.1 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.2 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -120,24 +117,65 @@ client.on('messageCreate', async (message) => {
       const result = spinGacha();
       const userId = message.author.id;
 
-      // Nếu quay trúng "Chúc may mắn lần sau" (id: null) -> Ẩn tỉ lệ, khích lệ người chơi
+      // Nếu quay trúng "Chúc may mắn lần sau" (id: null)
       if (result.id === null) {
+        // 15 Câu random cho Content (Tin nhắn bên ngoài)
+        const outerFailMessages = [
+          `✨ Cậu chủ <@${userId}> ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><! Thử lại nha!`,
+          `🌸 Cậu chủ <@${userId}> hông được nản nha, vòng quay đang tích năng lượng để dành quà bự cho cậu đó!`,
+          `🥺 Hic, tý nữa là cậu chủ <@${userId}> ẵm được Role xịn rùi... Thử lại cái nữa xem sao nè!`,
+          `✨ Cậu chủ <@${userId}> đừng buồn nhen, lượt này nhường xíu thôi chứ lượt sau là nổ hũ chắc luôn!`,
+          `🎀 Ôm cậu chủ <@${userId}> một cái nè~ May mắn đang trên đường đến rồi, làm lượt nữa thôi nào!`,
+          `💫 Suýt chút nữa là cậu chủ <@${userId}> rinh được Role rùi á! Thêm 1 lần nữa cho nó máu nhen!`,
+          `🌷 Cậu chủ <@${userId}> ơi chớ vội nản, hũ ngon phải tích tụ lâu một xíu mới nổ to rực rỡ nè!`,
+          `🍧 Thiếu có chút xíu tẹo teo thôi hà cậu chủ <@${userId}> ơi, bấm thử thêm phát nữa đi mà~`,
+          `🌟 May mắn của cậu chủ <@${userId}> đang kẹt xe một chút xíu thôi, gõ thêm lệnh nữa là tới liền!`,
+          `💖 Cậu chủ <@${userId}> dễ thương thế này chắc chắn lượt sau vũ trụ sẽ độ tràn bờ đê luôn!`,
+          `🍀 Vòng quay thử thách độ kiên nhẫn của cậu chủ <@${userId}> xíu thôi, cố lên lượt nữa nhen!`,
+          `🦄 Cậu chủ <@${userId}> ơi, nhân phẩm đỉnh cao sắp xuất hiện rùi, thử lại lần nữa xem sao nè!`,
+          `🍬 Hông có sao hết á cậu chủ <@${userId}> ơi, đ keo này ta bày keo khác nha, chiến tiếp thôi!`,
+          `🍰 Suýt nữa là lượm lúa rùi cậu chủ <@${userId}> ơi! Thử lại liền tay vận may sẽ đến nè!`,
+          `🎁 Cậu chủ <@${userId}> ơi hít một hơi thật sâu rồi làm lại quả nhấp siêu phẩm nữa nào!`
+        ];
+
+        // 15 Câu random cho Lời Nhắn (Bên trong Embed)
+        const innerFailMessages = [
+          "Cậu chủ ơi, không sao đâu nè chỉ là mình thiếu chút may mắn hoi ><!",
+          "Nhân phẩm của cậu chủ đang nạp năng lượng đó, lượt sau chắc chắn đỏ lềnh lềnh luôn!",
+          "Đừng nản lòng nha cậu chủ ơi, vũ trụ đang chuẩn bị quà bự hơn cho cậu đó~",
+          "Thêm một tí tẹo may mắn nữa thôi là Role về tay cậu chủ rùi, thử lại nha!",
+          "Hơi tiếc một xíu xiu thôi nè, nhưng mà lượt quay tiếp theo nhất định sẽ bùng nổ!",
+          "Tay cậu chủ hôm nay thơm lắm rùi, chỉ thiếu 1 milimet may mắn nữa thôi á!",
+          "Vòng quay chỉ đang dạo đầu xíu thôi, siêu phẩm rực rỡ đang đợi cậu chủ ở lượt sau nè!",
+          "Năng lượng may mắn đang tích tụ cực đại, lượt tới bấm phát là dính liền nhen cậu chủ!",
+          "Một chút kiên trì sẽ mang lại phần thưởng xứng đáng nhất cho cậu chủ đó nha~",
+          "Hôm nay trời đẹp thế này kiểu gì lượt tới cậu chủ cũng nổ hũ siêu to cho xem!",
+          "Chỉ là chút thử thách nhỏ của hệ thống thôi, cậu chủ cứ tự tin thử lại nhen!",
+          "Tấm vé trúng thưởng đang nằm ngay lượt tiếp theo kìa cậu chủ ơi, bấm liền đi nè!",
+          "Cậu chủ tỏa ra năng lượng chiến thắng rùi đó, thử lại phát nữa là lượm Role ngay!",
+          "Không sao hết nè, thần may mắn đang đứng ngay sau lưng cổ vũ cậu chủ đó nha!",
+          "Tích tiểu thành đại, lượt sau nhất định cậu chủ sẽ khiến cả server trầm trồ!"
+        ];
+
+        const randomOuterMsg = outerFailMessages[Math.floor(Math.random() * outerFailMessages.length)];
+        const randomInnerMsg = innerFailMessages[Math.floor(Math.random() * innerFailMessages.length)];
+
         const failEmbed = new EmbedBuilder()
           .setAuthor({ 
             name: '🎲 VÒNG QUAY RANDOM ROLE', 
             iconURL: message.author.displayAvatarURL({ dynamic: true }) 
           })
-          .setTitle('✨ Suýt Nữa Thì Trúng Rồi!')
+          .setTitle('✨ Suýt Nữa Thì Trúng Rùi!')
           .setDescription(
             `> Người chơi <@${userId}> vừa suýt chút nữa là lượm được Role xịn rồi!\n\n` +
-            `• 💫 **Lời nhắn:** Nhân phẩm đang nạp điện, lượt sau chắc chắn đỏ hơn nhé cậu ơi!`
+            `• 💫 **Lời nhắn:** ${randomInnerMsg}`
           )
           .setColor(0xE67E22)
           .setFooter({ text: 'Hệ thống Random Role • Emc4', iconURL: client.user.displayAvatarURL() })
           .setTimestamp();
 
         return message.channel.send({
-          content: `✨ <@${userId}> vừa suýt quay trúng Role! Thử lại lượt nữa xem sao nhé!`,
+          content: randomOuterMsg,
           embeds: [failEmbed]
         });
       }
@@ -155,7 +193,7 @@ client.on('messageCreate', async (message) => {
 
       if (userProgress[result.level] >= 2) {
         isRoleAwarded = true;
-        userProgress[result.level] = 0; // Reset tích lũy sau khi cấp role
+        userProgress[result.level] = 0;
 
         await message.member.roles.add(result.id).catch((err) => {
           console.error("Lỗi cấp Role:", err);
@@ -179,8 +217,8 @@ client.on('messageCreate', async (message) => {
 
       return message.channel.send({
         content: isRoleAwarded 
-          ? `🎉 Chúc mừng <@${userId}> đã tích lũy đủ 2 lần và chính thức nhận được Role <@&${result.id}>!` 
-          : `✨ <@${userId}> quay trúng <@&${result.id}> lần 1/2. Cố lên thêm 1 lần nữa nhé!`,
+          ? `🎉 Chúc mừng cậu chủ <@${userId}> đã tích lũy đủ 2 lần và chính thức nhận được Role <@&${result.id}>!` 
+          : `✨ Cậu chủ <@${userId}> quay trúng <@&${result.id}> lần 1/2. Cố lên thêm 1 lần nữa nhé!`,
         embeds: [successEmbed]
       });
 
