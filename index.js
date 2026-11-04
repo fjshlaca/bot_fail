@@ -101,7 +101,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 5.8 LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 5.9 LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -335,7 +335,7 @@ client.on('messageCreate', async (message) => {
     }
   }
 
-  // --- 3. LỆNH GA (GIVEAWAY - GIAO DIỆN WINE DẠ TIỆC) ---
+  // --- 3. LỆNH GA (GIVEAWAY - GIAO DIỆN WINE DẠ TIỆC GỌN GÀNG) ---
   if (command === 'ga') {
     if (args.length === 0) {
       const helpEmbed = new EmbedBuilder()
@@ -409,9 +409,6 @@ client.on('messageCreate', async (message) => {
     for (let i = 0; i < giveawayCount; i++) {
       const endTime = Date.now() + durationMs;
       const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Mọi người (Everyone)';
-
-      // Chuyển tiêu đề sang font Times New Roman kiểu Serif Unicode
-      // WINE GIVEAWAY -> 𝑊𝐼𝑁𝐸 𝐺𝐼𝑉𝐸𝐴𝑊𝐴𝑌 hoặc 𝚆𝙸𝙽𝙴 𝙶𝙸𝚅𝙴𝙰𝚆𝙰𝚈 (Dùng dạng Serif đậm nét cổ điển)
       const wineTitleFont = '𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘';
 
       const buildEmbed = (msRemaining) => {
@@ -419,7 +416,6 @@ client.on('messageCreate', async (message) => {
           .setTitle(`<:emoji_11:1567468310419742810> ${wineTitleFont} <:emoji_11:1567468310419742810>`)
           .setDescription(
             `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
-            `╰┈➤ Hãy chạm vào biểu tượng <:emoji_11:1567468310419742810> bên dưới để nhận lấy tấm vé tham dự dạ tiệc và có cơ hội trở thành chủ nhân của phần quà lần này.\n\n` +
             `<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n` +
             `<:emoji_10:1567468283764936836> **Điều kiện tham dự:** ${roleDisplay}\n` +
             `<:emoji_13:1567468392544337972> **Số phần quà:** \`${winnerCount} giải\`\n` +
