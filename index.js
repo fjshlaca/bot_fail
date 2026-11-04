@@ -32,11 +32,11 @@ const REQUIRED_ROLE_ID = '1425167156668141728'; // Role bắt buộc có mới �
 
 // 5 Cấp Role (Thứ tự từ thấp Cấp 5 đến cao Cấp 1)
 const RANDOM_ROLES_POOL = [
-  { id: '1393170229072367758', weight: 55, level: 5, name: 'Cấp 5' }, // Thấp nhất
-  { id: '1393151668144574474', weight: 25, level: 4, name: 'Cấp 4' },
-  { id: '1393151139972644905', weight: 10, level: 3, name: 'Cấp 3' },
-  { id: '1393150909327999006', weight: 5,  level: 2, name: 'Cấp 2' },
-  { id: '1393150502157680761', weight: 5,  level: 1, name: 'Cấp 1' }  // Cao nhất
+  { id: '1393170229072367758', weight: 85, level: 5, name: 'Cấp 5' }, // Thấp nhất
+  { id: '1393151668144574474', weight: 10, level: 4, name: 'Cấp 4' },
+  { id: '1393151139972644905', weight: 3, level: 3, name: 'Cấp 3' },
+  { id: '1393150909327999006', weight: 1,  level: 2, name: 'Cấp 2' },
+  { id: '1393150502157680761', weight: 1,  level: 1, name: 'Cấp 1' }  // Cao nhất
 ];
 
 // Bộ nhớ lưu số lần tích lũy (Pity Counter) cho từng User ID
