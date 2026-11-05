@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
-const { joinVoiceChannel } = require('@discordjs/voice'); // Thêm thư viện Voice
+const { joinVoiceChannel } = require('@discordjs/voice');
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot Discord Giveaway & Moderation đang hoạt động!'));
 app.listen(PORT, () => console.log(`Web Server running on port ${PORT}`));
 
-// --- KHỞI TẠO BOT (BỔ SUNG INTENT VOICE STATES) ---
+// --- KHỞI TẠO BOT ---
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -18,7 +18,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildModeration,
-    GatewayIntentBits.GuildVoiceStates // Bắt buộc để nhận diện người dùng ra/vào voice
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -34,12 +34,9 @@ const JAIL_CHANNEL_ID = '1567570022224625817';
 const jailData = new Map();
 const activeGiveaways = new Map();
 
-// --- BIẾN TOÀN CỤC CHO VOICE ---
-let voiceConnection = null;
-let isPermanentVoice = false;
-let currentMasterName = '';
-let currentVoiceChannelId = null;
-let voiceAfkTimer = null;
+// --- MAP QUẢN LÝ VOICE THEO TỪNG SERVER (GUILD) ---
+// Key: guildId, Value: { connection, isPermanent, channelId, afkTimer }
+const serverVoices = new Map();
 
 // --- DATA CỐ ĐỊNH (Tối ưu RAM) ---
 const TAUNT_MESSAGES = [
@@ -65,7 +62,6 @@ const TAUNT_MESSAGES = [
   "Sám hối kiểu này chắc Phật tổ cũng phải quỳ gối xin hàng luôn quá! 🙏"
 ];
 
-// CHUẨN FORM KHÔNG ✨ VÀ EMOJI LÊN ĐẦU
 const FAIL_STORIES = [
   {
     title: "<:emoji_20:1567861679788658718> Suýt Chạm Tay Đến Báu Vật!",
@@ -180,42 +176,35 @@ async function getTargetMember(message) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER VOICE READY] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER MULTI-SERVER VOICE READY] Đã đăng nhập: ${client.user.tag}`);
 });
 
-// --- LẮNG NGHE SỰ KIỆN VOICE ĐỂ TÍNH AFK 5 PHÚT ---
+// --- LẮNG NGHE SỰ KIỆN VOICE ĐỂ TÍNH AFK 5 PHÚT THEO TỪNG SERVER ---
 client.on('voiceStateUpdate', (oldState, newState) => {
-  if (!voiceConnection || isPermanentVoice || !currentVoiceChannelId) return;
+  const guildId = oldState.guild.id || newState.guild.id;
+  const sData = serverVoices.get(guildId);
+  if (!sData || sData.isPermanent || !sData.channelId) return;
 
-  // Nếu có sự thay đổi ra/vào liên quan đến kênh bot đang đứng
-  if (oldState.channelId === currentVoiceChannelId || newState.channelId === currentVoiceChannelId) {
-    const guild = client.guilds.cache.get(oldState.guild.id || newState.guild.id);
-    const channel = guild.channels.cache.get(currentVoiceChannelId);
-
+  if (oldState.channelId === sData.channelId || newState.channelId === sData.channelId) {
+    const guild = client.guilds.cache.get(guildId);
+    const channel = guild.channels.cache.get(sData.channelId);
     if (!channel) return;
 
-    // Đếm số người dùng thật (không phải bot) đang ở trong phòng
     const humanMembers = channel.members.filter(m => !m.user.bot).size;
 
     if (humanMembers === 0) {
-      // Nếu không còn ai, bắt đầu đếm ngược 5 phút
-      if (!voiceAfkTimer) {
-        voiceAfkTimer = setTimeout(() => {
-          if (voiceConnection) {
-            voiceConnection.destroy();
-            voiceConnection = null;
-            isPermanentVoice = false;
-            currentMasterName = '';
-            currentVoiceChannelId = null;
+      if (!sData.afkTimer) {
+        sData.afkTimer = setTimeout(() => {
+          if (sData.connection) {
+            sData.connection.destroy();
           }
-          voiceAfkTimer = null;
+          serverVoices.delete(guildId);
         }, 5 * 60 * 1000); // 5 phút
       }
     } else {
-      // Nếu có người dùng thật ở trong, hủy bộ đếm giờ (nếu có)
-      if (voiceAfkTimer) {
-        clearTimeout(voiceAfkTimer);
-        voiceAfkTimer = null;
+      if (sData.afkTimer) {
+        clearTimeout(sData.afkTimer);
+        sData.afkTimer = null;
       }
     }
   }
@@ -228,41 +217,69 @@ client.on('messageCreate', async (message) => {
   const command = args.shift().toLowerCase();
 
   // ==========================================
-  // 🎤 GỌI BOT VÀO VOICE (zjoin & zjoinv)
+  // 🎤 GỌI BOT VÀO VOICE (zjoin & zjoinv) BẰNG VOICE TEXT CHAT
   // ==========================================
   if (command === 'join' || command === 'joinv') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
 
-    const voiceChannel = message.member.voice.channel;
-    if (!voiceChannel) return message.reply('❌ Bạn phải ở trong một kênh thoại trước thì mình mới vào được!');
+    // Kiểm tra xem kênh hiện tại có phải là Voice Text Chat hay Channel Voice liên kết không, 
+    // hoặc người dùng đang đứng ở voice nào. Ưu tiên lấy voice tương ứng với Voice Text Chat hoặc Channel.
+    let targetVoiceChannel = null;
 
-    // Chống cướp bot: Nếu bot đang ở phòng khác thì từ chối ngay
-    if (voiceConnection && currentVoiceChannelId && currentVoiceChannelId !== voiceChannel.id) {
-      return message.reply(`❌ Mình đang bận phục vụ cho cậu chủ **${currentMasterName}** rồi, vui lòng không làm phiền.`);
+    // Nếu kênh chat hiện tại là một Voice Channel trực tiếp hoặc Voice Text Chat
+    if (message.channel.isVoiceBased()) {
+      targetVoiceChannel = message.channel;
+    } else if (message.channel.parentId) {
+      // Tìm kênh voice nằm chung danh mục (category) hoặc tìm kênh voice mà channel này gắn kèm
+      targetVoiceChannel = message.guild.channels.cache.find(
+        c => c.isVoiceBased() && c.parentId === message.channel.parentId
+      );
     }
 
-    // Set trạng thái theo lệnh
-    isPermanentVoice = (command === 'joinv');
-    currentMasterName = message.member.displayName || message.author.username;
-    currentVoiceChannelId = voiceChannel.id;
+    // Nếu vẫn chưa tìm thấy, lấy phòng voice mà chính người gọi đang ngồi
+    if (!targetVoiceChannel && message.member.voice.channel) {
+      targetVoiceChannel = message.member.voice.channel;
+    }
+
+    if (!targetVoiceChannel) {
+      return message.reply('❌ Hãy gõ lệnh này tại khung chat của kênh thoại hoặc khi bạn đang ở trong phòng voice!');
+    }
+
+    const guildId = message.guild.id;
+    const existingVoice = serverVoices.get(guildId);
+
+    // Nếu server này bot đã ở trong một voice khác rồi thì báo bận
+    if (existingVoice && existingVoice.channelId !== targetVoiceChannel.id) {
+      const busyChannel = message.guild.channels.cache.get(existingVoice.channelId);
+      const roomName = busyChannel ? busyChannel.name : 'phòng khác';
+      return message.reply(`❌ Mình đang bận phục vụ cho cậu chủ **${existingVoice.masterName}** tại **${roomName}** rồi, vui lòng không làm phiền.`);
+    }
+
+    const isPermanent = (command === 'joinv');
+    const masterName = message.member.displayName || message.author.username;
 
     try {
-      voiceConnection = joinVoiceChannel({
-        channelId: voiceChannel.id,
-        guildId: message.guild.id,
+      const connection = joinVoiceChannel({
+        channelId: targetVoiceChannel.id,
+        guildId: guildId,
         adapterCreator: message.guild.voiceAdapterCreator,
-        selfDeaf: false, // Bật loa
-        selfMute: false  // Bật mic
+        selfDeaf: false,
+        selfMute: false
       });
 
-      // Nếu đang có timer AFK từ trước, hủy nó đi để phục vụ chủ mới
-      if (voiceAfkTimer) {
-        clearTimeout(voiceAfkTimer);
-        voiceAfkTimer = null;
+      if (existingVoice && existingVoice.afkTimer) {
+        clearTimeout(existingVoice.afkTimer);
       }
 
-      const modeText = isPermanentVoice ? 'Cắm chốt vĩnh viễn' : 'Sẽ tự động về sau 5p nếu phòng trống';
-      return message.reply(`✅ Đã có mặt tại **${voiceChannel.name}** để phục vụ cậu chủ **${currentMasterName}**. *(Chế độ: ${modeText})*`);
+      serverVoices.set(guildId, {
+        connection,
+        isPermanent,
+        channelId: targetVoiceChannel.id,
+        masterName,
+        afkTimer: null
+      });
+
+      return message.reply('Nô tì đến liền ạ');
     } catch (err) {
       console.error(err);
       return message.reply('❌ Đã xảy ra lỗi khi tham gia kênh thoại!');
@@ -270,25 +287,21 @@ client.on('messageCreate', async (message) => {
   }
 
   // ==========================================
-  // 👋 ĐUỔI BOT KHỎI VOICE (zout)
+  // 👋 ĐUỔI BOT KHỎI VOICE TRONG SERVER (zout)
   // ==========================================
   if (command === 'out') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
     
-    if (!voiceConnection) return message.reply('❌ Mình đang rảnh rỗi, có ở trong kênh thoại nào đâu!');
+    const guildId = message.guild.id;
+    const existingVoice = serverVoices.get(guildId);
 
-    // Rời kênh và reset mọi biến
-    voiceConnection.destroy();
-    voiceConnection = null;
-    isPermanentVoice = false;
-    currentMasterName = '';
-    currentVoiceChannelId = null;
-    if (voiceAfkTimer) {
-      clearTimeout(voiceAfkTimer);
-      voiceAfkTimer = null;
-    }
+    if (!existingVoice) return message.reply('❌ Mình đang rảnh rỗi, có ở trong kênh thoại nào của server này đâu!');
 
-    return message.reply('👋 Đã nhận lệnh! Chào tạm biệt và chúc các bạn vui vẻ!');
+    existingVoice.connection.destroy();
+    if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
+    serverVoices.delete(guildId);
+
+    return message.reply('Nô tì lui đây ạ!');
   }
 
   // ==========================================
