@@ -139,7 +139,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 9.8 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 9.9 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -576,7 +576,7 @@ client.on('messageCreate', async (message) => {
         const selectedFail = failStories[Math.floor(Math.random() * failStories.length)];
 
         const failEmbed = new EmbedBuilder()
-          .setAuthor({ name: '˚·.¸¸.💎 ¸¸.·° \nROYAL TREASURES', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+          .setAuthor({ name: '˚·.¸¸.<a:hgtt_kimcuong2:1567874404602618017> ¸¸.·° \nROYAL TREASURES', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
           .setTitle(selectedFail.title)
           .setDescription(selectedFail.desc)
           .setColor(0xC7A9C9);
@@ -604,7 +604,7 @@ client.on('messageCreate', async (message) => {
       }
 
       const successEmbed = new EmbedBuilder()
-        .setAuthor({ name: '˚₊‧꒰ა <a:hgtt_kimcuong2:1079071229799047228>  ໒꒱ ‧₊˚\n𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setAuthor({ name: '˚₊‧꒰ა <a:hgtt_kimcuong2:1567874404602618017>  ໒꒱ ‧₊˚\n𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺', iconURL: message.author.displayAvatarURL({ dynamic: true }) })
         .setTitle('✧ ˚₊‧⊹ Chúc Mừng Đã Tìm Thấy Bảo Vật! ⊹‧₊˚')
         .setDescription(
           `<:emoji_15:1567861576025772135> Nhà Sưu Tầm <@${userId}> vừa khai mở thành công chiếc rương báu và tìm thấy một bảo vật quý giá!\n\n` +
