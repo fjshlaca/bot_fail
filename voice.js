@@ -1,6 +1,15 @@
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const googleTTS = require('google-tts-api');
 const config = require('./config');
+const fs = require('fs');
+const { Readable } = require('stream');
+
+// Sửa dứt điểm lỗi câm: Trỏ đường dẫn chính xác và ép quyền chạy cho FFmpeg trên Render
+const ffmpegPath = require('ffmpeg-static');
+process.env.FFMPEG_PATH = ffmpegPath;
+try {
+  if (ffmpegPath) fs.chmodSync(ffmpegPath, '777');
+} catch (e) {}
 
 function isGAAdmin(member) {
   if (!member) return false;
@@ -8,7 +17,7 @@ function isGAAdmin(member) {
 }
 
 module.exports = (client) => {
-  // Quản lý AFK 5 phút khi phòng trống
+  // Quản lý AFK 5 phút
   client.on('voiceStateUpdate', (oldState, newState) => {
     const guildId = oldState.guild.id || newState.guild.id;
     const sData = client.serverVoices.get(guildId);
@@ -74,6 +83,12 @@ module.exports = (client) => {
         if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
         
         const player = createAudioPlayer();
+        
+        // Bắt lỗi âm thanh để bot không chết ngầm
+        player.on('error', error => {
+          console.error('Lỗi phát âm thanh:', error.message);
+        });
+
         connection.subscribe(player);
 
         client.serverVoices.set(guildId, { 
@@ -91,7 +106,7 @@ module.exports = (client) => {
       }
     }
 
-    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE BẰNG GOOGLE TTS
+    // 🔊 LỆNH zs <nội_dung> 
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -106,26 +121,30 @@ module.exports = (client) => {
       }
 
       if (textToSpeak.length > 200) {
-        return message.reply('❌ **Nội dung quá dài!** Vui lòng nhập dưới 200 ký tự để bot không bị hụt hơi.');
+        return message.reply('❌ **Nội dung quá dài!** Vui lòng nhập dưới 200 ký tự.');
       }
 
       try {
-        // Lấy link âm thanh trực tiếp từ Google Translate siêu mượt
-        const audioUrl = googleTTS.getAudioUrl(textToSpeak, {
+        // Fix dứt điểm 403: Tải audio về làm bộ đệm ảo thay vì đưa URL mạng cho FFmpeg
+        const base64Audio = await googleTTS.getAudioBase64(textToSpeak, {
           lang: 'vi',
           slow: false,
           host: 'https://translate.google.com',
         });
+        
+        const audioBuffer = Buffer.from(base64Audio, 'base64');
+        const stream = Readable.from(audioBuffer);
 
-        const resource = createAudioResource(audioUrl, { 
+        const resource = createAudioResource(stream, { 
           inlineVolume: true 
         });
-        resource.volume.setVolume(2.5); // Khuếch đại âm lượng to rõ
+        resource.volume.setVolume(2.5); 
 
         existingVoice.player.play(resource);
         return message.react('🗣️').catch(() => {});
 
       } catch (err) {
+        console.error(err);
         return message.reply('❌ Đã xảy ra lỗi khi tạo giọng đọc!');
       }
     }
