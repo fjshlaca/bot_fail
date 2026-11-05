@@ -1,84 +1,91 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const config = require('./config');
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX)) return;
-    const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
+    if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX || 'z')) return;
+    const args = message.content.slice((config.PREFIX || 'z').length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command === 'avt' || command === 'check') {
-      let targetUser = message.mentions.users.first();
+      let targetMember = message.mentions.members.first();
 
-      if (!targetUser && message.reference && message.reference.messageId) {
+      if (!targetMember && message.reference && message.reference.messageId) {
         try {
           const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-          targetUser = repliedMsg.author;
+          targetMember = await message.guild.members.fetch(repliedMsg.author.id).catch(() => null);
         } catch (err) {}
       }
 
-      if (!targetUser) targetUser = message.author;
+      if (!targetMember) targetMember = message.member;
+      const targetUser = targetMember.user;
 
-      try {
-        targetUser = await targetUser.fetch();
-      } catch (e) {}
-
-      const avatarUrl = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
-      const bannerUrl = targetUser.bannerURL({ dynamic: true, size: 1024 });
+      // Ưu tiên lấy Avatar Server và Banner Server (nếu có)
+      const serverAvatar = targetMember.displayAvatarURL({ dynamic: true, size: 1024 });
+      const serverBanner = targetMember.bannerURL({ dynamic: true, size: 1024 }) || targetUser.bannerURL({ dynamic: true, size: 1024 });
 
       const embed = new EmbedBuilder()
-        .setTitle(`🖼️ Hồ Sơ: ${targetUser.tag}`)
-        .setImage(avatarUrl)
-        .setDescription(`• **ID:** \`${targetUser.id}\`\n• **Đang xem:** \`Avatar\``)
+        .setTitle(`🖼️ Hồ Sơ Server: ${targetUser.tag}`)
+        .setImage(serverAvatar)
+        .setDescription(`• **ID:** \`${targetUser.id}\`\n• **Chế độ:** \`Server (Cục bộ)\``)
         .setColor(0xC7A9C9);
 
-      const avtButton = new ButtonBuilder()
-        .setCustomId(`avt_${targetUser.id}`)
-        .setLabel('Avatar')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(true);
+      // 3 nút tương tác: [Server (Primary/Disabled)] [Banner Server] [Global]
+      const btn1 = new ButtonBuilder().setCustomId(`prof_server_${targetUser.id}`).setLabel('Server').setStyle(ButtonStyle.Primary).setDisabled(true);
+      const btn2 = new ButtonBuilder().setCustomId(`prof_sbanner_${targetUser.id}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary).setDisabled(!serverBanner);
+      const btn3 = new ButtonBuilder().setCustomId(`prof_global_${targetUser.id}`).setLabel('Global').setStyle(ButtonStyle.Success);
 
-      const bannerButton = new ButtonBuilder()
-        .setCustomId(`banner_${targetUser.id}`)
-        .setLabel('Banner')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!bannerUrl);
-
-      const row = new ActionRowBuilder().addComponents(avtButton, bannerButton);
-
+      const row = new ActionRowBuilder().addComponents(btn1, btn2, btn3);
       return message.channel.send({ embeds: [embed], components: [row] });
     }
   });
 
+  // Xử lý chuyển đổi qua lại giữa Server <-> Global Avatar & Banner
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
-    if (!interaction.customId.startsWith('avt_') && !interaction.customId.startsWith('banner_')) return;
+    if (!interaction.customId.startsWith('prof_')) return;
 
-    const [type, userId] = interaction.customId.split('_');
-    const targetUser = await client.users.fetch(userId).catch(() => null);
-    if (!targetUser) return interaction.reply({ content: '❌ Không tìm thấy thông tin người dùng!', ephemeral: true });
+    const [action, type, userId] = interaction.customId.split('_');
+    const member = await interaction.guild.members.fetch(userId).catch(() => null);
+    if (!member) return interaction.reply({ content: '❌ Không tìm thấy thành viên trong server!', ephemeral: true });
 
-    const avatarUrl = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
-    const bannerUrl = targetUser.bannerURL({ dynamic: true, size: 1024 });
+    const user = member.user;
+    const sAvatar = member.displayAvatarURL({ dynamic: true, size: 1024 });
+    const sBanner = member.bannerURL({ dynamic: true, size: 1024 }) || user.bannerURL({ dynamic: true, size: 1024 });
+    const gAvatar = user.displayAvatarURL({ dynamic: true, size: 1024 });
+    const gBanner = user.bannerURL({ dynamic: true, size: 1024 });
 
-    const embed = new EmbedBuilder()
-      .setTitle(`🖼️ Hồ Sơ: ${targetUser.tag}`)
-      .setColor(0xC7A9C9);
+    const embed = new EmbedBuilder().setTitle(`🖼️ Hồ Sơ: ${user.tag}`).setColor(0xC7A9C9);
 
-    const avtBtn = new ButtonBuilder().setCustomId(`avt_${userId}`).setLabel('Avatar');
-    const bannerBtn = new ButtonBuilder().setCustomId(`banner_${userId}`).setLabel('Banner').setDisabled(!bannerUrl);
+    let b1, b2, b3;
 
-    if (type === 'avt') {
-      embed.setImage(avatarUrl).setDescription(`• **ID:** \`${userId}\`\n• **Đang xem:** \`Avatar\``);
-      avtBtn.setStyle(ButtonStyle.Primary).setDisabled(true);
-      bannerBtn.setStyle(ButtonStyle.Secondary);
-    } else {
-      embed.setImage(bannerUrl || avatarUrl).setDescription(`• **ID:** \`${userId}\`\n• **Đang xem:** \`Banner\` ${!bannerUrl ? '(Người dùng không có banner)' : ''}`);
-      avtBtn.setStyle(ButtonStyle.Secondary);
-      bannerBtn.setStyle(ButtonStyle.Primary).setDisabled(false);
+    if (type === 'server') {
+      embed.setImage(sAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Avatar)\``);
+      b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Primary).setDisabled(true);
+      b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary).setDisabled(!sBanner);
+      b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Success);
+    } else if (type === 'sbanner') {
+      embed.setImage(sBanner || sAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Banner)\``);
+      b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
+      b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Primary).setDisabled(true);
+      b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Success);
+    } else if (type === 'global') {
+      embed.setImage(gAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Avatar cá nhân)\``);
+      b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Primary).setDisabled(true);
+      b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary).setDisabled(!gBanner);
+      b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Success);
+    } else if (type === 'gavatar') {
+      embed.setImage(gAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Avatar cá nhân)\``);
+      b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Primary).setDisabled(true);
+      b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary).setDisabled(!gBanner);
+      b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Success);
+    } else if (type === 'gbanner') {
+      embed.setImage(gBanner || gAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Banner cá nhân)\``);
+      b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary);
+      b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Primary).setDisabled(true);
+      b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Success);
     }
 
-    const row = new ActionRowBuilder().addComponents(avtBtn, bannerBtn);
+    const row = new ActionRowBuilder().addComponents(b1, b2, b3);
     return interaction.update({ embeds: [embed], components: [row] });
   });
 };
