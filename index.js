@@ -27,12 +27,15 @@ client.activeGiveaways = new Map();
 client.serverVoices = new Map();
 client.userGachaProgress = new Map();
 
-// Import các file tính năng nhỏ
+// Import các file tính năng
 require('./moderation')(client);
 require('./giveaway')(client);
 require('./gacha')(client);
 require('./voice')(client);
 require('./stats')(client);
+require('./addrole')(client);
+require('./profile')(client);
+require('./claimGa')(client);
 require('./help')(client); // Đặt help ở cuối để gom tất cả lệnh vào menu zhelp
 
 client.once('ready', () => {
