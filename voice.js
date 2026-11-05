@@ -12,14 +12,31 @@ const {
   VoiceConnectionStatus, 
   entersState 
 } = require('@discordjs/voice');
-const googleTTS = require('google-tts-api');
-const fs = require('fs');
-const path = require('path');
+const { Readable } = require('stream');
+const https = require('https');
 const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
+}
+
+// Hàm lấy trực tiếp buffer âm thanh tiếng Việt từ Google TTS không qua thư viện trung gian
+function getGoogleTTSAudioStream(text) {
+  return new Promise((resolve, reject) => {
+    const encodedText = encodeURIComponent(text);
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
+
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Failed to load TTS, status code: ${res.statusCode}`));
+      }
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', (err) => reject(err));
+    }).on('error', (err) => reject(err));
+  });
 }
 
 module.exports = (client) => {
@@ -34,7 +51,6 @@ module.exports = (client) => {
 
     const humanMembers = channel.members.filter(m => !m.user.bot).size;
 
-    // Chỉ tự động out khi phòng trống NẾU là zjoin (isPermanent = false)
     if (humanMembers === 0 && !sData.isPermanent) {
       if (!sData.afkTimer) {
         sData.afkTimer = setTimeout(() => {
@@ -76,11 +92,10 @@ module.exports = (client) => {
           channelId: targetVoiceChannel.id,
           guildId: guildId,
           adapterCreator: message.guild.voiceAdapterCreator,
-          selfDeaf: false, // Bỏ tự động tắt loa
-          selfMute: false  // Bỏ tự động tắt mic
+          selfDeaf: false,
+          selfMute: false
         });
 
-        // Tự động kết nối lại nếu bị Discord đá ra
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
           try {
             await Promise.race([
@@ -108,13 +123,13 @@ module.exports = (client) => {
           player 
         });
 
-        return message.reply(`✅ Nô tì đã vào phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ)' : 'zjoin (Out sau 5p phòng trống)'}**`);
+        return message.reply(`✅ Nô tì đã vào phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ vĩnh viễn)' : 'zjoin (Out sau 5p phòng trống)'}**`);
       } catch (err) {
         return message.reply('❌ Lỗi kết nối vào voice!');
       }
     }
 
-    // LỆNH ZS (PHÁT ÂM THANH BẰNG FILE VẬT LÝ)
+    // LỆNH ZS (PHÁT ÂM THANH TRỰC TIẾP TỪ STREAM GOOGLE TTS MỚI)
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -128,27 +143,17 @@ module.exports = (client) => {
       if (textToSpeak.length > 200) return message.reply('❌ **Nội dung quá dài!** Xin hãy nhập dưới 200 ký tự.');
 
       try {
-        // Tải Base64 từ Google
-        const base64Audio = await googleTTS.getAudioBase64(textToSpeak, {
-          lang: 'vi',
-          slow: false,
-          host: 'https://translate.google.com',
-        });
+        const audioBuffer = await getGoogleTTSAudioStream(textToSpeak);
+        const stream = Readable.from(audioBuffer);
 
-        // Tạo file mp3 vật lý lưu thẳng vào server Render
-        const buffer = Buffer.from(base64Audio, 'base64');
-        const tempFilePath = path.join(__dirname, `tts_${guildId}.mp3`);
-        fs.writeFileSync(tempFilePath, buffer);
-
-        // Đọc file âm thanh từ ổ cứng (đảm bảo FFmpeg nhận diện 100%)
-        const resource = createAudioResource(tempFilePath, { inlineVolume: true });
+        const resource = createAudioResource(stream, { inlineVolume: true });
         resource.volume.setVolume(2.5); 
         existingVoice.player.play(resource);
 
         return message.react('🗣️').catch(() => {});
       } catch (err) {
-        console.error(err);
-        return message.reply('❌ Có lỗi xảy ra khi xử lý âm thanh!');
+        console.error("Lỗi TTS:", err);
+        return message.reply('❌ Không thể tạo giọng đọc cho nội dung này!');
       }
     }
 
