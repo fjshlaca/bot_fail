@@ -14,10 +14,10 @@ module.exports = (client) => {
           `Prefix của bot là **\`z\`**\n` +
           `Chọn một danh mục từ menu bên dưới để xem chi tiết các lệnh.\n\n` +
           `**Các danh mục:**\n` +
-          `• **Quản Trị & Kiểm Duyệt**\n` +
-          `• **Hệ Thống Giveaway**\n` +
-          `• **Kho Báu & Gacha**\n` +
-          `• **Trợ Lý Kênh Thoại (Voice)**`
+          `• ** Mod **\n` +
+          `• ** Giveaway **\n` +
+          `• ** Gacha **\n` +
+          `• ** Bot Voice **`
         )
         .setColor(0xC7A9C9);
 
@@ -25,10 +25,10 @@ module.exports = (client) => {
         .setCustomId('help_menu')
         .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
         .addOptions([
-          { label: 'Quản Trị & Kiểm Duyệt', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
-          { label: 'Hệ Thống Giveaway', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
-          { label: 'Kho Báu & Gacha', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
-          { label: 'Trợ Lý Kênh Thoại (Voice)', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+          { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+          { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
+          { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
+          { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
         ]);
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -45,10 +45,10 @@ module.exports = (client) => {
         `Prefix của bot là **\`z\`**\n` +
         `Chọn một danh mục từ menu bên dưới để xem chi tiết các lệnh.\n\n` +
         `**Các danh mục:**\n` +
-        `• **Quản Trị & Kiểm Duyệt**\n` +
-        `• **Hệ Thống Giveaway**\n` +
-        `• **Kho Báu & Gacha**\n` +
-        `• **Trợ Lý Kênh Thoại (Voice)**`
+        `• ** Mod **\n` +
+        `• ** Giveaway **\n` +
+        `• ** Gacha **\n` +
+        `• ** Bot Voice **`
       )
       .setColor(0xC7A9C9);
 
@@ -56,10 +56,10 @@ module.exports = (client) => {
       .setCustomId('help_menu')
       .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
       .addOptions([
-        { label: 'Quản Trị & Kiểm Duyệt', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
-        { label: 'Hệ Thống Giveaway', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
-        { label: 'Kho Báu & Gacha', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
-        { label: 'Trợ Lý Kênh Thoại (Voice)', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+        { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+        { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
+        { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
+        { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
       ]);
     const homeRow = new ActionRowBuilder().addComponents(homeMenu);
 
@@ -68,13 +68,13 @@ module.exports = (client) => {
       let detailEmbed = new EmbedBuilder().setColor(0xC7A9C9);
 
       if (selected === 'mod') {
-        detailEmbed.setTitle('🛡️ Quản Trị & Kiểm Duyệt').setDescription('`zclear <1-100>` — Xóa nhanh tin nhắn\n`zmute <tg> [lý_do]` — Cấm ngôn\n`zunmute` — Gỡ cấm ngôn\n`zban` — Ban thành viên\n`ztu <số_lần>` — Phạt tù\n`ztron` — Vượt ngục\n`zancut` — Ăn cút sám hối');
+        detailEmbed.setTitle(' Mod ').setDescription('`zclear <1-100>` — Xóa nhanh tin nhắn\n`zmute <tg> [lý_do]` — Cấm ngôn\n`zunmute` — Gỡ cấm ngôn\n`zban` — Ban thành viên\n`ztu <số_lần>` — Phạt tù\n`ztron` — Vượt ngục\n`zancut` — Ăn cút sám hối');
       } else if (selected === 'ga') {
-        detailEmbed.setTitle('🎁 Hệ Thống Giveaway').setDescription('`zga [@Role] <số> <tg> <quà>` — Tạo GA\n`zend` — Kết thúc GA sớm\n`zgarr` — Reroll người trúng');
+        detailEmbed.setTitle(' Giveaway ').setDescription('`zga [@Role] <số> <tg> <quà>` — Tạo GA\n`zend` — Kết thúc GA sớm\n`zgarr` — Reroll người trúng');
       } else if (selected === 'gacha') {
-        detailEmbed.setTitle('💎 Kho Báu & Gacha').setDescription('`zrdrole` — Khai mở rương báu nhận Royal Role');
+        detailEmbed.setTitle(' Gacha ').setDescription('`zrdrole` — Khai mở rương báu nhận Royal Role');
       } else if (selected === 'voice') {
-        detailEmbed.setTitle('🎤 Trợ Lý Kênh Thoại (Voice)').setDescription('`zjoin` — Gọi bot vào voice (5p tự out)\n`zjoinv` — Cắm chốt vĩnh viễn\n`zout` — Đuổi bot ra');
+        detailEmbed.setTitle(' Bot Voice ').setDescription('`zjoin` — Gọi bot vào voice (5p tự out)\n`zjoinv` — Cắm chốt vĩnh viễn\n`zout` — Đuổi bot ra');
       }
 
       const backButton = new ButtonBuilder().setCustomId('help_home').setLabel('Quay về').setStyle(ButtonStyle.Secondary);
