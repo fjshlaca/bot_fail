@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -41,7 +41,7 @@ module.exports = (client) => {
       const prize = args.slice(argIndex + 2).join(' ');
 
       if (!winnerCount || !durationStr || !prize) {
-        return message.reply('❌ **Cú pháp hợp lệ:** `zga [@Role] <số_người> <thời_gian> <phần_thưởng>`');
+        return message.reply('❌ **Cú pháp hợp lệ:** `zga [@Role] <số_người> <thời_gian> <phần_thưởng>`\n*Ví dụ:* `zga 1 1h 100k` hoặc `zga @VIP 2 30m Nitro`');
       }
 
       const durationMs = parseDuration(durationStr);
@@ -49,7 +49,7 @@ module.exports = (client) => {
 
       const endsAt = Date.now() + durationMs;
 
-      // Chuẩn nguyên bản 100% theo ảnh 3a46e7 của Đức
+      // Giao diện chuẩn tuyệt đối với đúng 2 link ảnh của Đức
       const gaEmbed = new EmbedBuilder()
         .setTitle('🍷 WINE GIVEAWAY 🍷')
         .setDescription(
@@ -60,19 +60,14 @@ module.exports = (client) => {
           `<:emoji_13:1567468392544337972> **Còn lại:** <t:${Math.floor(endsAt / 1000)}:R>`
         )
         .setColor(0xC7A9C9)
-        .setThumbnail('https://i.imgur.com/8Q6sZ9p.png') // Ảnh tròn góc phải chuẩn nguyên bản
-        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop'); // Ảnh nền lớn
+        .setThumbnail('https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aed970c&is=6aec458c&hm=27289b1d3d210797c15ea7dc9cccce9f14822a4d71348d364d1c38efd5552273&=&format=webp&quality=lossless&width=640&height=640')
+        .setImage('https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aed970c&is=6aec458c&hm=2042a3ad70269850299f51a28afddf0e3c3d9262a58578739e8b403054d152d9&=&format=webp&quality=lossless&width=1280&height=721');
 
-      const joinButton = new ButtonBuilder()
-        .setCustomId('join_ga')
-        .setLabel('Nâng ly tham gia')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('🍷');
-
-      const row = new ActionRowBuilder().addComponents(joinButton);
-
-      const gaMessage = await message.channel.send({ embeds: [gaEmbed], components: [row] });
+      const gaMessage = await message.channel.send({ embeds: [gaEmbed] });
       if (message.deletable) message.delete().catch(() => {});
+
+      // Bot tự thả reaction 🍷 để người chơi bấm vào tham gia
+      await gaMessage.react('🍷').catch(() => {});
 
       client.activeGiveaways.set(gaMessage.id, {
         messageId: gaMessage.id,
@@ -81,11 +76,10 @@ module.exports = (client) => {
         prize,
         winnerCount,
         roleId: roleRequirement ? roleRequirement.id : null,
-        participants: new Set(),
         endsAt
       });
 
-      // Hẹn giờ kết thúc
+      // Hẹn giờ kết thúc GA
       setTimeout(async () => {
         const gaData = client.activeGiveaways.get(gaMessage.id);
         if (!gaData) return;
@@ -94,20 +88,38 @@ module.exports = (client) => {
         if (!channel) return;
 
         const msg = await channel.messages.fetch(gaData.messageId).catch(() => null);
-        const participantsArr = Array.from(gaData.participants);
+        if (!msg) return;
 
-        if (participantsArr.length === 0) {
-          if (msg) {
-            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
-            msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+        // Lấy danh sách user đã react hình chiếc ly (🍷) và loại bot ra
+        const reaction = msg.reactions.cache.get('🍷');
+        let participants = [];
+        if (reaction) {
+          const users = await reaction.users.fetch();
+          participants = users.filter(u => !u.bot).map(u => u.id);
+        }
+
+        // Lọc theo điều kiện role nếu có
+        let validParticipants = participants;
+        if (gaData.roleId && channel.guild) {
+          validParticipants = [];
+          for (const userId of participants) {
+            const member = await channel.guild.members.fetch(userId).catch(() => null);
+            if (member && member.roles.cache.has(gaData.roleId)) {
+              validParticipants.push(userId);
+            }
           }
+        }
+
+        if (validParticipants.length === 0) {
+          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
+          msg.edit({ embeds: [endedEmbed] }).catch(() => {});
           channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
           client.activeGiveaways.delete(gaMessage.id);
           return;
         }
 
         const winners = [];
-        const pool = [...participantsArr];
+        const pool = [...validParticipants];
         for (let i = 0; i < Math.min(gaData.winnerCount, pool.length); i++) {
           const randomIndex = Math.floor(Math.random() * pool.length);
           winners.push(pool.splice(randomIndex, 1)[0]);
@@ -115,10 +127,8 @@ module.exports = (client) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        if (msg) {
-          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
-          msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
-        }
+        const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
+        msg.edit({ embeds: [endedEmbed] }).catch(() => {});
 
         channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
         client.activeGiveaways.delete(gaMessage.id);
@@ -137,15 +147,32 @@ module.exports = (client) => {
 
         if (!gaData) return message.reply('❌ Không tìm thấy Giveaway hoạt động ở tin nhắn này!');
 
-        const participantsArr = Array.from(gaData.participants);
-        if (participantsArr.length === 0) {
-          repliedMsg.edit({ components: [] }).catch(() => {});
+        const reaction = repliedMsg.reactions.cache.get('🍷');
+        let participants = [];
+        if (reaction) {
+          const users = await reaction.users.fetch();
+          participants = users.filter(u => !u.bot).map(u => u.id);
+        }
+
+        let validParticipants = participants;
+        if (gaData.roleId && message.guild) {
+          validParticipants = [];
+          for (const userId of participants) {
+            const member = await message.guild.members.fetch(userId).catch(() => null);
+            if (member && member.roles.cache.has(gaData.roleId)) {
+              validParticipants.push(userId);
+            }
+          }
+        }
+
+        if (validParticipants.length === 0) {
+          repliedMsg.edit({}).catch(() => {});
           client.activeGiveaways.delete(repliedMsg.id);
           return message.channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
         }
 
         const winners = [];
-        const pool = [...participantsArr];
+        const pool = [...validParticipants];
         for (let i = 0; i < Math.min(gaData.winnerCount, pool.length); i++) {
           const randomIndex = Math.floor(Math.random() * pool.length);
           winners.push(pool.splice(randomIndex, 1)[0]);
@@ -154,9 +181,9 @@ module.exports = (client) => {
 
         if (repliedMsg.embeds[0]) {
           const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
-          repliedMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+          repliedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
         } else {
-          repliedMsg.edit({ components: [] }).catch(() => {});
+          repliedMsg.edit({}).catch(() => {});
         }
 
         client.activeGiveaways.delete(repliedMsg.id);
@@ -171,30 +198,6 @@ module.exports = (client) => {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền Reroll!**');
       if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn kết quả Giveaway!');
       return message.channel.send(`˚₊‧⊹ :emoji_11: Hương vị thay đổi, xin chúc mừng <@${message.author.id}> trở thành chủ nhân mới của món quà…⊹‧₊˚`);
-    }
-  });
-
-  client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton() || interaction.customId !== 'join_ga') return;
-
-    const gaData = client.activeGiveaways.get(interaction.message.id);
-    if (!gaData) {
-      return interaction.reply({ content: '❌ Giveaway này đã kết thúc hoặc không tồn tại!', ephemeral: true });
-    }
-
-    if (gaData.roleId) {
-      const member = interaction.member;
-      if (!member.roles.cache.has(gaData.roleId)) {
-        return interaction.reply({ content: `❌ Bạn cần có role phù hợp mới được tham gia!`, ephemeral: true });
-      }
-    }
-
-    if (gaData.participants.has(interaction.user.id)) {
-      gaData.participants.delete(interaction.user.id);
-      return interaction.reply({ content: '🍷 Đã rời khỏi danh sách tham gia!', ephemeral: true });
-    } else {
-      gaData.participants.add(interaction.user.id);
-      return interaction.reply({ content: '🍷 Đã tham gia thành công!', ephemeral: true });
     }
   });
 };
