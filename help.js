@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
-// Kiểm tra quyền chỉ 3 role ban đầu mới được dùng lệnh bot
 function isMainAdmin(member) {
   if (!member) return false;
   if (member.id === config.BOT_ADMIN_ID) return true;
@@ -12,15 +11,15 @@ module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX || 'z')) return;
     
-    // Kiểm tra bảo mật: Nếu không phải 3 role quản trị chính thì chặn luôn mọi lệnh bắt đầu bằng z
-    if (!isMainAdmin(message.member)) {
-      return message.reply('❌ **Bạn không có quyền sử dụng hệ thống lệnh của bot này!**');
-    }
-
     const args = message.content.slice((config.PREFIX || 'z').length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command === 'help') {
+      // Lệnh zhelp yêu cầu phải là 3 role quản trị mới được dùng
+      if (!isMainAdmin(message.member)) {
+        return message.reply('❌ **Bạn không có quyền sử dụng bảng trợ giúp này!**');
+      }
+
       const helpEmbed = new EmbedBuilder()
         .setTitle('📜 Bảng Trợ Giúp Hệ Thống Bot')
         .setDescription('Dưới đây là các danh mục tính năng của bot quản lý:')
