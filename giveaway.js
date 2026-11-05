@@ -49,18 +49,19 @@ module.exports = (client) => {
 
       const endsAt = Date.now() + durationMs;
 
-      // Giao diện chuẩn gốc chính xác như ảnh mẫu 3aa848 của Đức
+      // Chuẩn nguyên bản 100% theo ảnh 3a46e7 của Đức
       const gaEmbed = new EmbedBuilder()
         .setTitle('🍷 WINE GIVEAWAY 🍷')
         .setDescription(
           `✦ Một ly vang đỏ...\n\n` +
           `<:emoji_9:1567955189481078784> **Chủ Tiệc:** <@${message.author.id}>\n` +
           `<:emoji_10:1567955255541637201> **Điều kiện:** ${roleRequirement ? `<@&${roleRequirement.id}>` : 'Everyone'}\n` +
-          `🎁 **Phần quà:** ${prize}\n` +
-          `⏳ **Còn lại:** <t:${Math.floor(endsAt / 1000)}:R>`
+          `<:emoji_13:1567468392544337972> **Phần quà:** ${prize}\n` +
+          `<:emoji_13:1567468392544337972> **Còn lại:** <t:${Math.floor(endsAt / 1000)}:R>`
         )
         .setColor(0xC7A9C9)
-        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop');
+        .setThumbnail('https://i.imgur.com/8Q6sZ9p.png') // Ảnh tròn góc phải chuẩn nguyên bản
+        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop'); // Ảnh nền lớn
 
       const joinButton = new ButtonBuilder()
         .setCustomId('join_ga')
@@ -97,7 +98,7 @@ module.exports = (client) => {
 
         if (participantsArr.length === 0) {
           if (msg) {
-            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
+            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
             msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
           }
           channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
@@ -115,7 +116,7 @@ module.exports = (client) => {
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
         if (msg) {
-          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
+          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
           msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
         }
 
@@ -151,7 +152,13 @@ module.exports = (client) => {
         }
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        repliedMsg.edit({ components: [] }).catch(() => {});
+        if (repliedMsg.embeds[0]) {
+          const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
+          repliedMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+        } else {
+          repliedMsg.edit({ components: [] }).catch(() => {});
+        }
+
         client.activeGiveaways.delete(repliedMsg.id);
         return message.channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
       } catch (err) {
