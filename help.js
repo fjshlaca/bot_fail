@@ -17,7 +17,8 @@ module.exports = (client) => {
           `• ** Mod **\n` +
           `• ** Giveaway **\n` +
           `• ** Gacha **\n` +
-          `• ** Bot Voice **`
+          `• ** Bot Voice **\n` +
+          `• ** Thống Kê **`
         )
         .setColor(0xC7A9C9);
 
@@ -28,7 +29,8 @@ module.exports = (client) => {
           { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
           { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
           { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
-          { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+          { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' },
+          { label: ' Thống Kê ', description: 'Xem biến động thành viên 3, 7, 30 ngày...', value: 'stats' }
         ]);
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -48,7 +50,8 @@ module.exports = (client) => {
         `• ** Mod **\n` +
         `• ** Giveaway **\n` +
         `• ** Gacha **\n` +
-        `• ** Bot Voice **`
+        `• ** Bot Voice **\n` +
+        `• ** Thống Kê **`
       )
       .setColor(0xC7A9C9);
 
@@ -59,7 +62,8 @@ module.exports = (client) => {
         { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
         { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
         { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
-        { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+        { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' },
+        { label: ' Thống Kê ', description: 'Xem biến động thành viên 3, 7, 30 ngày...', value: 'stats' }
       ]);
     const homeRow = new ActionRowBuilder().addComponents(homeMenu);
 
@@ -75,6 +79,8 @@ module.exports = (client) => {
         detailEmbed.setTitle(' Gacha ').setDescription('`zrdrole` — Khai mở rương báu nhận Royal Role');
       } else if (selected === 'voice') {
         detailEmbed.setTitle(' Bot Voice ').setDescription('`zjoin` — Gọi bot vào voice (5p tự out)\n`zjoinv` — Cắm chốt vĩnh viễn\n`zout` — Đuổi bot ra');
+      } else if (selected === 'stats') {
+        detailEmbed.setTitle(' Thống Kê ').setDescription('`zstats 3` — Xem biến động mem trong 3 ngày\n`zstats 7` — Xem biến động mem trong 7 ngày\n`zstats 30` — Xem biến động mem trong 30 ngày');
       }
 
       const backButton = new ButtonBuilder().setCustomId('help_home').setLabel('Quay về').setStyle(ButtonStyle.Secondary);
