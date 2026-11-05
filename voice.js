@@ -115,7 +115,7 @@ module.exports = (client) => {
       }
     }
 
-    // LỆNH S (Test âm thanh trực tiếp từ nguồn CDN ổn định tuyệt đối)
+    // LỆNH S (Test âm thanh trực tiếp từ link chuẩn soundhelix.com)
     if (command === 's') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -125,8 +125,7 @@ module.exports = (client) => {
       }
 
       try {
-        // Dùng đường dẫn MP3 mẫu chuẩn để kiểm tra phần cứng voice
-        const resource = createAudioResource('https://www.soundhelix.examples/examples/mp3/SoundHelix-Song-1.mp3', { inlineVolume: true });
+        const resource = createAudioResource('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', { inlineVolume: true });
         resource.volume.setVolume(2.0);
         
         existingVoice.player.play(resource);
