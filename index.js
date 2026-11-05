@@ -56,27 +56,27 @@ const TAUNT_MESSAGES = [
   "Sám hối kiểu này chắc Phật tổ cũng phải quỳ gối xin hàng luôn quá! 🙏"
 ];
 
-// ĐÃ SỬA LỖI GIAO DIỆN Ở CÂU CHUYỆN CUỐI CÙNG
+// CẬP NHẬT GIAO DIỆN: CHUYỂN EMOJI LÊN TITLE VÀ XÓA ✨
 const FAIL_STORIES = [
   {
-    title: "Suýt Chạm Tay Đến Báu Vật!",
-    desc: `<:emoji_20:1567861679788658718> Người chơi {USER} vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!`
+    title: "<:emoji_20:1567861679788658718> Suýt Chạm Tay Đến Báu Vật!",
+    desc: `Người chơi {USER} vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!`
   },
   {
-    title: "Báu Vật Suýt Được Khai Mở!",
-    desc: `<:emoji_19:1567861657823346718> ₊˚⊹ Người chơi {USER} vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\n♡ Lời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!`
+    title: "<:emoji_19:1567861657823346718> Báu Vật Suýt Được Khai Mở!",
+    desc: `₊˚⊹ Người chơi {USER} vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\n♡ Lời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!`
   },
   {
-    title: "Chìa Khóa Chưa Tìm Được Ổ!",
-    desc: `<:emoji_17:1567861637073866933> ₊˚⊹ Người chơi {USER} đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\n♡ Lời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!`
+    title: "<:emoji_17:1567861637073866933> Chìa Khóa Chưa Tìm Được Ổ!",
+    desc: `₊˚⊹ Người chơi {USER} đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\n♡ Lời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!`
   },
   {
-    title: "Bảo Vật Vẫn Đang Ẩn Mình!",
-    desc: `<:emoji_23:1567861756477571142> ₊˚⊹ Người chơi {USER} vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\n♡ Lời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!`
+    title: "<:emoji_23:1567861756477571142> Bảo Vật Vẫn Đang Ẩn Mình!",
+    desc: `₊˚⊹ Người chơi {USER} vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\n♡ Lời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!`
   },
   {
-    title: "Định Mệnh Chưa Gọi Tên!",
-    desc: `<:emoji_22:1567861737187836024> ₊˚⊹ Người chơi {USER} đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\n♡ Lời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!`
+    title: "<:emoji_22:1567861737187836024> Định Mệnh Chưa Gọi Tên!",
+    desc: `₊˚⊹ Người chơi {USER} đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\n♡ Lời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!`
   },
   {
     title: "<:emoji_21:1567861715767660615> Ngai Vàng Vẫn Chưa Có Chủ!",
@@ -407,17 +407,11 @@ client.on('messageCreate', async (message) => {
 
       if (!result.id) {
         const story = FAIL_STORIES[Math.floor(Math.random() * FAIL_STORIES.length)];
-        let titleContent = story.title;
-        // Đảm bảo emoji vương miện không bị kẹp thêm vào "✨" cho câu chuyện cuối
-        if (titleContent.includes('<:emoji_21')) {
-           titleContent = titleContent;
-        } else {
-           titleContent = `✨ **${titleContent}** ✨`;
-        }
-
+        
+        // CHỈ RENDER IN ĐẬM VỚI TITLE CHỨA SẴN CẢ EMOJI BÊN TRONG, KHÔNG CÓ THÊM LOGIC ✨ SPARKLES NÀO NỮA
         const failEmbed = new EmbedBuilder()
           .setTitle(commonTitle)
-          .setDescription(`${titleContent}\n\n${story.desc.replace('{USER}', `<@${userId}>`)}`)
+          .setDescription(`**${story.title}**\n\n${story.desc.replace('{USER}', `<@${userId}>`)}`)
           .setColor(0xC7A9C9);
         return message.channel.send({ embeds: [failEmbed] });
       }
