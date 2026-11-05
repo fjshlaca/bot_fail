@@ -15,6 +15,8 @@ const {
 } = require('@discordjs/voice');
 
 const googleTTS = require('google-tts-api');
+const axios = require('axios');
+const { Readable } = require('stream');
 
 console.log("=== DISCORD VOICE DEPENDENCY REPORT ===");
 console.log(generateDependencyReport());
@@ -118,7 +120,7 @@ module.exports = (client) => {
       }
     }
 
-    // LỆNH S (Đọc TTS hoặc phát âm thanh chuẩn qua FFmpeg)
+    // LỆNH S (Tải audio dạng Buffer qua Axios rồi stream trực tiếp)
     if (command === 's') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -133,27 +135,29 @@ module.exports = (client) => {
         let audioUrl = '';
         
         if (textToSpeech.length > 0) {
-          // Tạo link Google TTS tiếng Việt từ nội dung người dùng gõ
           audioUrl = googleTTS.getAudioUrl(textToSpeech, {
             lang: 'vi',
             slow: false,
             host: 'https://translate.google.com',
           });
         } else {
-          // Nếu chỉ gõ `zs` không có chữ gì thì phát nhạc mẫu test
           audioUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
         }
 
-        console.log(`[TTS] Đang phát audio từ URL: ${audioUrl}`);
+        console.log(`[TTS BUFFER] Đang tải audio từ: ${audioUrl}`);
 
-        // Dùng createAudioResource bọc qua FFmpeg để chạy mượt mà trên Linux
-        const resource = createAudioResource(audioUrl, { inlineVolume: true });
+        // Dùng axios tải file về dạng arraybuffer để né triệt để lỗi mạng trên Cloud
+        const response = await axios.get(audioUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
+        
+        const stream = Readable.from(buffer);
+        const resource = createAudioResource(stream, { inlineVolume: true });
         resource.volume.setVolume(2.0);
         
         existingVoice.player.play(resource);
         return message.react('🔊').catch(() => {});
       } catch (err) {
-        console.error("Lỗi phát audio TTS:", err);
+        console.error("Lỗi phát audio Buffer:", err);
         return message.reply('❌ Lỗi xử lý âm thanh!');
       }
     }
