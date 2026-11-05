@@ -140,7 +140,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 10.1 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 10.2 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -548,28 +548,28 @@ client.on('messageCreate', async (message) => {
 
       const failStories = [
         {
-          title: "<:emoji_20:1567861679788658718> Suýt Chạm Tay Đến Báu Vật!",
-          desc: `Người chơi <@${userId}> vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!`
+          title: "Suýt Chạm Tay Đến Báu Vật!",
+          desc: `<:emoji_20:1567861679788658718> Người chơi <@${userId}> vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!`
         },
         {
-          title: "<:emoji_19:1567861657823346718> Báu Vật Suýt Được Khai Mở!",
-          desc: `₊˚⊹ Người chơi <@${userId}> vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\n♡ Lời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!`
+          title: "Báu Vật Suýt Được Khai Mở!",
+          desc: `<:emoji_19:1567861657823346718> ₊˚⊹ Người chơi <@${userId}> vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\n♡ Lời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!`
         },
         {
-          title: "<:emoji_17:1567861637073866933> Chìa Khóa Chưa Tìm Được Ổ!",
-          desc: `₊˚⊹ Người chơi <@${userId}> đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\n♡ Lời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!`
+          title: "Chìa Khóa Chưa Tìm Được Ổ!",
+          desc: `<:emoji_17:1567861637073866933> ₊˚⊹ Người chơi <@${userId}> đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\n♡ Lời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!`
         },
         {
-          title: "<:emoji_23:1567861756477571142> Bảo Vật Vẫn Đang Ẩn Mình!",
-          desc: `₊˚⊹ Người chơi <@${userId}> vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\n♡ Lời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!`
+          title: "Bảo Vật Vẫn Đang Ẩn Mình!",
+          desc: `<:emoji_23:1567861756477571142> ₊˚⊹ Người chơi <@${userId}> vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\n♡ Lời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!`
         },
         {
-          title: "<:emoji_22:1567861737187836024> Định Mệnh Chưa Gọi Tên!",
-          desc: `₊˚⊹ Người chơi <@${userId}> đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\n♡ Lời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!`
+          title: "Định Mệnh Chưa Gọi Tên!",
+          desc: `<:emoji_22:1567861737187836024> ₊˚⊹ Người chơi <@${userId}> đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\n♡ Lời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!`
         },
         {
-          title: "<:emoji_21:1567861715767660615> Ngai Vàng Vẫn Chưa Có Chủ!",
-          desc: `₊˚⊹ Người chơi <@${userId}> vừa bỏ lỡ cơ hội chạm tay đến danh vị quý giá!\n\n♡ Lời nhắn: Vương miện vẫn đang đợi chủ nhân xứng đáng, hãy tiếp tục thử vận may nhé!`
+          title: "Ngai Vàng Vẫn Chưa Có Chủ!",
+          desc: `<:emoji_21:1567861715767660615> ₊˚⊹ Người chơi <@${userId}> vừa bỏ lỡ cơ hội chạm tay đến danh vị quý giá!\n\n♡ Lời nhắn: Vương miện vẫn đang đợi chủ nhân xứng đáng, hãy tiếp tục thử vận may nhé!`
         }
       ];
 
@@ -577,10 +577,9 @@ client.on('messageCreate', async (message) => {
         const selectedFail = failStories[Math.floor(Math.random() * failStories.length)];
 
         const failEmbed = new EmbedBuilder()
-          .setTitle(selectedFail.title)
+          .setTitle('˚₊‧꒰ა <a:hgtt_kimcuong2:1567874404602618017> ໒꒱ ‧₊˚\n𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺')
           .setDescription(
-            `˚₊‧꒰ა <a:hgtt_kimcuong2:1567874404602618017> ໒꒱ ‧₊˚\n` +
-            `**𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺**\n\n` +
+            `✨ **${selectedFail.title}** ✨\n\n` +
             `${selectedFail.desc}`
           )
           .setColor(0xC7A9C9);
@@ -608,15 +607,14 @@ client.on('messageCreate', async (message) => {
       }
 
       const successEmbed = new EmbedBuilder()
-        .setTitle('✧ ˚₊‧⊹ Chúc Mừng Đã Tìm Thấy Bảo Vật! ⊹‧₊˚')
+        .setTitle('˚₊‧꒰ა <a:hgtt_kimcuong2:1567874404602618017> ໒꒱ ‧₊˚\n𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺')
         .setDescription(
-          `˚₊‧꒰ა <a:hgtt_kimcuong2:1567874404602618017> ໒꒱ ‧₊˚\n` +
-          `**𝑹𝑶𝒀𝑨𝑳 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺**\n\n` +
+          `✧ ˚₊‧⊹ Chúc Mừng Đã Tìm Thấy Bảo Vật! ⊹‧₊˚\n\n` +
           `<:emoji_15:1567861576025772135> Nhà Sưu Tầm <@${userId}> vừa khai mở thành công chiếc rương báu và tìm thấy một bảo vật quý giá!\n\n` +
           `<:emoji_16:1567861598515896512> Bảo vật nhận được: <@&${result.id}>\n` +
           `<:emoji_17:1567861618975449218> Tiến độ tích luỹ: ${storageStatus}\n\n` +
           `      ˚₊‧꒰ა ♔ ໒꒱ ‧₊˚\n\n` +
-          `  𝑹𝒐𝒚𝒂𝒍 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺\n` +
+          `  𝑹𝒐𝒚𝒂𝙡 𝑻𝒓𝒆𝒂𝒔𝒖𝒓𝒆𝒔\n` +
           ` ZeitHaven • The Royal Collection\n\n` +
           `Một báu vật đã tìm thấy chủ nhân. ♡`
         )
