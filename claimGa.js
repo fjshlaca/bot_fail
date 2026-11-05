@@ -1,11 +1,12 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
+// Kiểm tra quyền riêng cho zclaim: 3 role ban đầu HOẶC role ngoại lệ 1537784742022484108
 function canUseClaim(member) {
   if (!member) return false;
   if (member.id === config.BOT_ADMIN_ID) return true;
   if (member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
-  if (config.CLAIM_ALLOWED_ROLES && member.roles.cache.some(r => config.CLAIM_ALLOWED_ROLES.includes(r.id))) return true;
+  if (member.roles.cache.has('1537784742022484108')) return true;
   return false;
 }
 
@@ -41,7 +42,6 @@ module.exports = (client) => {
         const winDetails = [];
 
         messages.forEach(msg => {
-          // Chỉ quét tin nhắn trong vòng 24h qua
           if (msg.createdTimestamp < oneDayAgo) return;
 
           const content = msg.content + (msg.embeds[0] ? (msg.embeds[0].description + ' ' + msg.embeds[0].title) : '');
@@ -49,7 +49,6 @@ module.exports = (client) => {
           if (content.includes(targetUser.id)) {
             if (content.includes('Kỷ Vật Ký Ức') || content.includes('thắng lớn') || content.includes('Ánh Trăng Tinh Tú') || content.includes('Rượu vang được nâng lên') || content.toLowerCase().includes('chúc mừng')) {
               
-              // Trích xuất tên phần thưởng nếu có trong nội dung
               let prizeName = 'Phần thưởng Giveaway';
               if (content.includes('36k')) prizeName = '36k';
               else if (content.includes('200k')) prizeName = '200k';
