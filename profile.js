@@ -18,7 +18,7 @@ module.exports = (client) => {
       }
 
       if (!targetMember) targetMember = message.member;
-      const targetUser = targetMember.user;
+      const targetUser = await targetMember.user.fetch({ force: true }).catch(() => targetMember.user);
 
       const gAvatar = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
       const gBanner = targetUser.bannerURL({ dynamic: true, size: 1024 });
@@ -27,7 +27,7 @@ module.exports = (client) => {
       const serverBanner = targetMember.bannerURL({ dynamic: true, size: 1024 }) || gBanner;
 
       const embed = new EmbedBuilder()
-        .setTitle(`🖼️ Hồ Sơ: ${targetUser.tag}`)
+        .setTitle(` Hồ Sơ: ${targetUser.tag}`)
         .setImage(serverAvatar)
         .setDescription(`• **ID:** \`${targetUser.id}\`\n• **Chế độ:** \`Server (Avatar)\``)
         .setColor(0xC7A9C9);
@@ -48,7 +48,6 @@ module.exports = (client) => {
 
     try {
       const parts = interaction.customId.split('_');
-      // parts[0] = prof, parts[1] = type (server, sbanner, global, gavatar, gbanner), parts[2] = userId
       const type = parts[1];
       const userId = parts[2];
 
@@ -57,7 +56,9 @@ module.exports = (client) => {
         return interaction.reply({ content: '❌ Không tìm thấy thành viên trong server!', ephemeral: true });
       }
 
-      const user = member.user;
+      // Bắt buộc fetch user để lấy đầy đủ banner từ API Discord
+      const user = await member.user.fetch({ force: true }).catch(() => member.user);
+
       const gAvatar = user.displayAvatarURL({ dynamic: true, size: 1024 });
       const gBanner = user.bannerURL({ dynamic: true, size: 1024 });
       
