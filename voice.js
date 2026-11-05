@@ -14,36 +14,15 @@ const {
   generateDependencyReport
 } = require('@discordjs/voice');
 
-// IN BÁO CÁO THƯ VIỆN VOICE RA LOGS RAILWAY ĐỂ KIỂM TRA OPUS/SODIUM
 console.log("=== DISCORD VOICE DEPENDENCY REPORT ===");
 console.log(generateDependencyReport());
 console.log("=======================================");
 
-const { Readable } = require('stream');
-const https = require('https');
 const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
-}
-
-// Hàm lấy trực tiếp buffer âm thanh tiếng Việt từ Google TTS
-function getGoogleTTSAudioStream(text) {
-  return new Promise((resolve, reject) => {
-    const encodedText = encodeURIComponent(text);
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
-
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-      if (res.statusCode !== 200) {
-        return reject(new Error(`Failed to load TTS, status code: ${res.statusCode}`));
-      }
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', (err) => reject(err));
-    }).on('error', (err) => reject(err));
-  });
 }
 
 module.exports = (client) => {
@@ -78,7 +57,7 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // LỆNH JOIN VÀ JOINV (gõ zjoin hoặc zjoinv)
+    // LỆNH JOIN VÀ JOINV
     if (command === 'join' || command === 'joinv') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       
@@ -136,34 +115,29 @@ module.exports = (client) => {
       }
     }
 
-    // LỆNH S (Đúng chuẩn gõ zs để nói, vd: zs alo)
+    // LỆNH S (Test âm thanh trực tiếp từ nguồn CDN ổn định tuyệt đối)
     if (command === 's') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
 
       if (!existingVoice) {
-        return message.reply('❌ Bot chưa vào kênh thoại! Dùng `zjoin` hoặc `zjoinv` trước.');
+        return message.reply('❌ Bot chưa vào kênh thoại! Dùng `zjoin` trước.');
       }
 
-      const textToSpeak = args.join(' ');
-      if (!textToSpeak) return message.reply('❌ **Nhập nội dung đi!** VD: `zs alo`');
-
       try {
-        const audioBuffer = await getGoogleTTSAudioStream(textToSpeak);
-        const stream = Readable.from(audioBuffer);
-
-        const resource = createAudioResource(stream, { inlineVolume: true });
-        resource.volume.setVolume(2.5); 
+        // Dùng đường dẫn MP3 mẫu chuẩn để kiểm tra phần cứng voice
+        const resource = createAudioResource('https://www.soundhelix.examples/examples/mp3/SoundHelix-Song-1.mp3', { inlineVolume: true });
+        resource.volume.setVolume(2.0);
+        
         existingVoice.player.play(resource);
-
-        return message.react('🗣️').catch(() => {});
+        return message.react('🔊').catch(() => {});
       } catch (err) {
-        console.error("Lỗi TTS:", err);
-        return message.reply('❌ Không thể tạo giọng đọc cho nội dung này!');
+        console.error("Lỗi phát audio:", err);
+        return message.reply('❌ Lỗi phát âm thanh!');
       }
     }
 
-    // LỆNH OUT (gõ zout)
+    // LỆNH OUT
     if (command === 'out') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       const guildId = message.guild.id;
