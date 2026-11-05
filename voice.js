@@ -1,6 +1,5 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
 const https = require('https');
-const http = require('http');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -86,7 +85,7 @@ module.exports = (client) => {
           player 
         });
 
-        return message.reply('Em bé đến liền ạ');
+        return message.reply('Nô tì đến liền ạ');
       } catch (err) {
         return message.reply('❌ Lỗi tham gia voice!');
       }
@@ -98,39 +97,40 @@ module.exports = (client) => {
       const existingVoice = client.serverVoices.get(guildId);
 
       if (!existingVoice) {
-        return message.reply('❌ Tớ vẫn chưa ở trong kênh thoại cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi tớ vào nha.');
+        return message.reply('❌ Bot chưa ở trong kênh thoại cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
       }
 
       const textToSpeak = args.join(' ');
       if (!textToSpeak) {
-        return message.reply('❌ Vui lòng nhập nội dung để tao nói`');
+        return message.reply('❌ **Vui lòng nhập nội dung cần bot nói!** Ví dụ: `zs ăn cứt`');
       }
 
       try {
         const encodedText = encodeURIComponent(textToSpeak);
+        // Dùng endpoint Google TTS phụ trợ ổn định hơn cho bot Discord
         const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
 
-        // Tạo request giả lập trình duyệt để lấy luồng âm thanh chuẩn xác
         https.get(ttsUrl, {
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Referer': 'https://translate.google.com/'
           }
         }, (res) => {
           if (res.statusCode !== 200) {
-            return message.reply('❌ Tao chưa biết nói');
+            return message.reply(`❌ Lỗi kết nối âm thanh (Mã lỗi: ${res.statusCode})`);
           }
 
           const resource = createAudioResource(res, { inlineVolume: true });
-          resource.volume.setVolume(2.0); // Tăng âm lượng to hẳn lên
+          resource.volume.setVolume(2.0); // Tăng âm lượng to rõ
 
           existingVoice.player.play(resource);
           return message.react('🗣️').catch(() => {});
         }).on('error', () => {
-          return message.reply('❌ Tao chưa biết nói');
+          return message.reply('❌ Không thể kết nối tới dịch vụ đọc giọng nói!');
         });
 
       } catch (err) {
-        return message.reply('❌ Tao chưa biết nói');
+        return message.reply('❌ Đã xảy ra lỗi khi phát âm thanh!');
       }
     }
 
@@ -145,7 +145,7 @@ module.exports = (client) => {
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
       
-      return message.reply('Em bé đi đây ạ!');
+      return message.reply('Nô tì lui đây ạ!');
     }
   });
 };
