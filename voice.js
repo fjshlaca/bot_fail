@@ -14,6 +14,8 @@ const {
   generateDependencyReport
 } = require('@discordjs/voice');
 
+const googleTTS = require('google-tts-api');
+
 console.log("=== DISCORD VOICE DEPENDENCY REPORT ===");
 console.log(generateDependencyReport());
 console.log("=======================================");
@@ -97,7 +99,7 @@ module.exports = (client) => {
         });
 
         const player = createAudioPlayer();
-        player.on('error', error => console.error('Lỗi phát Audio:', error.message));
+        player.on('error', error => console.error('Lỗi phát Audio Player:', error.message));
         connection.subscribe(player);
 
         client.serverVoices.set(guildId, { 
@@ -111,11 +113,12 @@ module.exports = (client) => {
 
         return message.reply(`✅ Nô tì đã vào phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ)' : 'zjoin (Out sau 5p)'}**`);
       } catch (err) {
+        console.error("Lỗi join voice:", err);
         return message.reply('❌ Lỗi kết nối vào voice!');
       }
     }
 
-    // LỆNH S (Test âm thanh trực tiếp từ link chuẩn soundhelix.com)
+    // LỆNH S (Đọc TTS hoặc phát âm thanh chuẩn qua FFmpeg)
     if (command === 's') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -124,15 +127,34 @@ module.exports = (client) => {
         return message.reply('❌ Bot chưa vào kênh thoại! Dùng `zjoin` trước.');
       }
 
+      const textToSpeech = args.join(' ');
+      
       try {
-        const resource = createAudioResource('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', { inlineVolume: true });
+        let audioUrl = '';
+        
+        if (textToSpeech.length > 0) {
+          // Tạo link Google TTS tiếng Việt từ nội dung người dùng gõ
+          audioUrl = googleTTS.getAudioUrl(textToSpeech, {
+            lang: 'vi',
+            slow: false,
+            host: 'https://translate.google.com',
+          });
+        } else {
+          // Nếu chỉ gõ `zs` không có chữ gì thì phát nhạc mẫu test
+          audioUrl = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+        }
+
+        console.log(`[TTS] Đang phát audio từ URL: ${audioUrl}`);
+
+        // Dùng createAudioResource bọc qua FFmpeg để chạy mượt mà trên Linux
+        const resource = createAudioResource(audioUrl, { inlineVolume: true });
         resource.volume.setVolume(2.0);
         
         existingVoice.player.play(resource);
         return message.react('🔊').catch(() => {});
       } catch (err) {
-        console.error("Lỗi phát audio:", err);
-        return message.reply('❌ Lỗi phát âm thanh!');
+        console.error("Lỗi phát audio TTS:", err);
+        return message.reply('❌ Lỗi xử lý âm thanh!');
       }
     }
 
