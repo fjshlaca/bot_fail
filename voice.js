@@ -70,7 +70,7 @@ module.exports = (client) => {
 
         if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
         client.serverVoices.set(guildId, { connection, isPermanent, channelId: targetVoiceChannel.id, masterName, afkTimer: null });
-        return message.reply('Nô tì đến liền ạ');
+        return message.reply('Em bé đến liền ạ');
       } catch (err) { message.reply('❌ Lỗi tham gia voice!'); }
     }
 
@@ -82,7 +82,7 @@ module.exports = (client) => {
       existingVoice.connection.destroy();
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
-      return message.reply('Nô tì lui đây ạ!');
+      return message.reply('Em bé đi đây ạ!');
     }
   });
 };
