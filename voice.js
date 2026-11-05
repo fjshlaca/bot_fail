@@ -12,31 +12,11 @@ const {
   VoiceConnectionStatus, 
   entersState 
 } = require('@discordjs/voice');
-const { Readable } = require('stream');
-const https = require('https');
 const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
-}
-
-// Hàm lấy trực tiếp buffer âm thanh tiếng Việt từ Google TTS không qua thư viện trung gian
-function getGoogleTTSAudioStream(text) {
-  return new Promise((resolve, reject) => {
-    const encodedText = encodeURIComponent(text);
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
-
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-      if (res.statusCode !== 200) {
-        return reject(new Error(`Failed to load TTS, status code: ${res.statusCode}`));
-      }
-      const chunks = [];
-      res.on('data', (chunk) => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', (err) => reject(err));
-    }).on('error', (err) => reject(err));
-  });
 }
 
 module.exports = (client) => {
@@ -71,7 +51,6 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // LỆNH JOIN VÀ JOINV
     if (command === 'join' || command === 'joinv') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       
@@ -123,13 +102,13 @@ module.exports = (client) => {
           player 
         });
 
-        return message.reply(`✅ Nô tì đã vào phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ vĩnh viễn)' : 'zjoin (Out sau 5p phòng trống)'}**`);
+        return message.reply(`✅ Nô tì đã vào phòng dạng: **${isPermanent ? 'zjoinv' : 'zjoin'}**`);
       } catch (err) {
         return message.reply('❌ Lỗi kết nối vào voice!');
       }
     }
 
-    // LỆNH ZS (PHÁT ÂM THANH TRỰC TIẾP TỪ STREAM GOOGLE TTS MỚI)
+    // TEST PHÁT ÂM THANH TRỰC TIẾP BẰNG LINK MP3 MẪU
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -138,26 +117,21 @@ module.exports = (client) => {
         return message.reply('❌ Bot chưa vào kênh thoại! Dùng `zjoin` hoặc `zjoinv` trước.');
       }
 
-      const textToSpeak = args.join(' ');
-      if (!textToSpeak) return message.reply('❌ **Nhập nội dung đi!** VD: `zs ê`');
-      if (textToSpeak.length > 200) return message.reply('❌ **Nội dung quá dài!** Xin hãy nhập dưới 200 ký tự.');
-
       try {
-        const audioBuffer = await getGoogleTTSAudioStream(textToSpeak);
-        const stream = Readable.from(audioBuffer);
-
-        const resource = createAudioResource(stream, { inlineVolume: true });
-        resource.volume.setVolume(2.5); 
+        // Dùng một link audio mp3 mẫu trực tiếp trên internet để kiểm tra xem bot có phát ra tiếng không
+        const testAudioUrl = 'https://www.soundhelix.examples/examples/mp3/SoundHelix-Song-1.mp3'; // hoặc link mp3 bất kỳ
+        // Hoặc dùng một link stream chuẩn
+        const resource = createAudioResource('https://www.freisound.org/data/previews/515/515693_6142175-lq.mp3', { inlineVolume: true });
+        resource.volume.setVolume(2.0);
+        
         existingVoice.player.play(resource);
-
-        return message.react('🗣️').catch(() => {});
+        return message.react('🎵').catch(() => {});
       } catch (err) {
-        console.error("Lỗi TTS:", err);
-        return message.reply('❌ Không thể tạo giọng đọc cho nội dung này!');
+        console.error("Lỗi test audio:", err);
+        return message.reply('❌ Không thể phát âm thanh thử nghiệm!');
       }
     }
 
-    // LỆNH OUT
     if (command === 'out') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       const guildId = message.guild.id;
