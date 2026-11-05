@@ -91,7 +91,7 @@ module.exports = (client) => {
       }
     }
 
-    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE
+    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE (Dùng Streamlabs TTS chuẩn Discord bot)
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -106,28 +106,51 @@ module.exports = (client) => {
       }
 
       try {
-        const encodedText = encodeURIComponent(textToSpeak);
-        // Dùng endpoint Google TTS phụ trợ ổn định hơn cho bot Discord
-        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
-
-        https.get(ttsUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Referer': 'https://translate.google.com/'
-          }
-        }, (res) => {
-          if (res.statusCode !== 200) {
-            return message.reply(`❌ Lỗi kết nối âm thanh (Mã lỗi: ${res.statusCode})`);
-          }
-
-          const resource = createAudioResource(res, { inlineVolume: true });
-          resource.volume.setVolume(2.0); // Tăng âm lượng to rõ
-
-          existingVoice.player.play(resource);
-          return message.react('🗣️').catch(() => {});
-        }).on('error', () => {
-          return message.reply('❌ Không thể kết nối tới dịch vụ đọc giọng nói!');
+        const postData = JSON.stringify({
+          voice: 'Vietnamese Female', // Giọng đọc tiếng Việt cực mượt
+          text: textToSpeak
         });
+
+        const options = {
+          hostname: 'metastream.herokuapp.com',
+          port: 443,
+          path: '/get_tts',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': postData.length
+          }
+        };
+
+        const req = https.request(options, (res) => {
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data);
+              if (json && json.speak_url) {
+                // Tải file âm thanh từ link streamlabs trả về
+                https.get(json.speak_url, (audioRes) => {
+                  const resource = createAudioResource(audioRes, { inlineVolume: true });
+                  resource.volume.setVolume(2.0);
+                  existingVoice.player.play(resource);
+                  return message.react('🗣️').catch(() => {});
+                });
+              } else {
+                return message.reply('❌ Không thể tạo giọng đọc cho nội dung này!');
+              }
+            } catch (e) {
+              return message.reply('❌ Lỗi giải mã phản hồi âm thanh!');
+            }
+          });
+        });
+
+        req.on('error', () => {
+          return message.reply('❌ Không thể kết nối tới dịch vụ TTS!');
+        });
+
+        req.write(postData);
+        req.end();
 
       } catch (err) {
         return message.reply('❌ Đã xảy ra lỗi khi phát âm thanh!');
