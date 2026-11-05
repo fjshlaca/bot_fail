@@ -1,5 +1,6 @@
-// Ép bot nhận diện thư viện opusscript thuần JS để chạy âm thanh trên Linux không cần biên dịch C++
+// Ép bot nhận diện thư viện opusscript thuần JS và libsodium-wrappers để chạy âm thanh trên Linux
 require('opusscript');
+require('libsodium-wrappers');
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
