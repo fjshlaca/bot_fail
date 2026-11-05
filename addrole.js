@@ -1,7 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
-// Bộ nhớ lưu lối tắt role theo guildId -> Map (keyword -> roleId)
 const roleShortcuts = new Map();
 
 function isGAAdmin(member) {
@@ -17,7 +16,6 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // LỆNH ZLUU: zluu <@&id_role> <tu_khoa>
     if (command === 'luu') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng lệnh này!**');
       
@@ -41,7 +39,6 @@ module.exports = (client) => {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // LỆNH ZADD: zadd <@id_user> <tu_khoa> (hoặc reply)
     if (command === 'add') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng lệnh này!**');
 
@@ -52,7 +49,7 @@ module.exports = (client) => {
         try {
           const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
           targetMember = await message.guild.members.fetch(repliedMsg.author.id);
-          keywordIndex = 0; // Nếu reply thì từ khóa nằm ở args[0]
+          keywordIndex = 0;
         } catch (err) {}
       }
 
@@ -85,7 +82,7 @@ module.exports = (client) => {
 
         return message.channel.send({ embeds: [successEmbed] });
       } catch (err) {
-        return message.reply('❌ Lỗi: Bot không đủ quyền để cấp role này (kiểm tra lại thứ bậc role của bot)!');
+        return message.reply('❌ Lỗi: Bot không đủ quyền để cấp role này!');
       }
     }
   });
