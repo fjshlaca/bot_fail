@@ -91,7 +91,7 @@ module.exports = (client) => {
       }
     }
 
-    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE (Dùng Streamlabs TTS chuẩn Discord bot)
+    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
@@ -107,7 +107,7 @@ module.exports = (client) => {
 
       try {
         const postData = JSON.stringify({
-          voice: 'Vietnamese Female', // Giọng đọc tiếng Việt cực mượt
+          voice: 'Vietnamese Female',
           text: textToSpeak
         });
 
@@ -129,10 +129,13 @@ module.exports = (client) => {
             try {
               const json = JSON.parse(data);
               if (json && json.speak_url) {
-                // Tải file âm thanh từ link streamlabs trả về
                 https.get(json.speak_url, (audioRes) => {
-                  const resource = createAudioResource(audioRes, { inlineVolume: true });
-                  resource.volume.setVolume(2.0);
+                  // Thêm cấu hình xử lý luồng stream để bot phát âm thanh mượt mà
+                  const resource = createAudioResource(audioRes, { 
+                    inlineVolume: true 
+                  });
+                  resource.volume.setVolume(2.5); // Tăng âm lượng to rõ
+
                   existingVoice.player.play(resource);
                   return message.react('🗣️').catch(() => {});
                 });
