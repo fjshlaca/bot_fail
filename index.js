@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const config = require('./config');
 
@@ -32,7 +32,8 @@ require('./moderation')(client);
 require('./giveaway')(client);
 require('./gacha')(client);
 require('./voice')(client);
-require('./help')(client);
+require('./stats')(client);
+require('./help')(client); // Đặt help ở cuối để gom tất cả lệnh vào menu zhelp
 
 client.once('ready', () => {
   console.log(`[BOT READY] Đã đăng nhập với tên: ${client.user.tag}`);
