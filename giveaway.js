@@ -49,11 +49,11 @@ module.exports = (client) => {
 
       const endsAt = Date.now() + durationMs;
 
-      // Giao diện chuẩn tuyệt đối với đúng 2 link ảnh của Đức
+      // Giao diện chuẩn tuyệt đối theo đúng yêu cầu của Đức
       const gaEmbed = new EmbedBuilder()
-        .setTitle('🍷 WINE GIVEAWAY 🍷')
+        .setTitle('<:emoji_11:1567468310419742810> WINE GIVEAWAY <:emoji_11:1567468310419742810>')
         .setDescription(
-          `✦ Một ly vang đỏ...\n\n` +
+          `✧ Một ly vang đỏ, một món quà dành cho vị khách hữu duyên.\n\n` +
           `<:emoji_9:1567955189481078784> **Chủ Tiệc:** <@${message.author.id}>\n` +
           `<:emoji_10:1567955255541637201> **Điều kiện:** ${roleRequirement ? `<@&${roleRequirement.id}>` : 'Everyone'}\n` +
           `<:emoji_13:1567468392544337972> **Phần quà:** ${prize}\n` +
@@ -66,8 +66,8 @@ module.exports = (client) => {
       const gaMessage = await message.channel.send({ embeds: [gaEmbed] });
       if (message.deletable) message.delete().catch(() => {});
 
-      // Bot tự thả reaction 🍷 để người chơi bấm vào tham gia
-      await gaMessage.react('🍷').catch(() => {});
+      // Bot tự thả reaction custom emoji 11 để người chơi bấm vào tham gia
+      await gaMessage.react('1567468310419742810').catch(() => {});
 
       client.activeGiveaways.set(gaMessage.id, {
         messageId: gaMessage.id,
@@ -90,8 +90,8 @@ module.exports = (client) => {
         const msg = await channel.messages.fetch(gaData.messageId).catch(() => null);
         if (!msg) return;
 
-        // Lấy danh sách user đã react hình chiếc ly (🍷) và loại bot ra
-        const reaction = msg.reactions.cache.get('🍷');
+        // Lấy danh sách user đã react custom emoji 11
+        const reaction = msg.reactions.cache.find(r => r.emoji.id === '1567468310419742810');
         let participants = [];
         if (reaction) {
           const users = await reaction.users.fetch();
@@ -147,7 +147,7 @@ module.exports = (client) => {
 
         if (!gaData) return message.reply('❌ Không tìm thấy Giveaway hoạt động ở tin nhắn này!');
 
-        const reaction = repliedMsg.reactions.cache.get('🍷');
+        const reaction = repliedMsg.reactions.cache.find(r => r.emoji.id === '1567468310419742810');
         let participants = [];
         if (reaction) {
           const users = await reaction.users.fetch();
