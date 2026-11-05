@@ -1,6 +1,5 @@
-// Ép bot nhận diện thư viện opusscript thuần JS và libsodium-wrappers để chạy âm thanh trên Linux
 require('opusscript');
-require('libsodium-wrappers');
+require('tweetnacl');
 
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
