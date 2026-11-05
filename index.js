@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const config = require('./config');
 
-// --- WEB SERVER CHO RENDER ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot Discord đang hoạt động!'));
@@ -21,7 +20,6 @@ const client = new Client({
   ]
 });
 
-// Khởi tạo các bộ nhớ dữ liệu toàn cục
 client.jailData = new Map();
 client.activeGiveaways = new Map();
 client.serverVoices = new Map();
@@ -36,7 +34,7 @@ require('./stats')(client);
 require('./addrole')(client);
 require('./profile')(client);
 require('./claimGa')(client);
-require('./help')(client); // Đặt help ở cuối để gom tất cả lệnh vào menu zhelp
+require('./help')(client);
 
 client.once('ready', () => {
   console.log(`[BOT READY] Đã đăng nhập với tên: ${client.user.tag}`);
