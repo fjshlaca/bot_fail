@@ -1,3 +1,6 @@
+// Ép bot nhận diện thư viện opusscript thuần JS để chạy âm thanh trên Linux không cần biên dịch C++
+require('opusscript');
+
 const { Client, GatewayIntentBits } = require('discord.js');
 const express = require('express');
 const config = require('./config');
