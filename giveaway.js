@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -6,160 +6,203 @@ function isGAAdmin(member) {
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
 }
 
-function parseCustomDuration(str) {
-  if (!str) return null;
-  const regex = /(\d+)\s*([smhd])/gi;
-  let match, totalMs = 0, found = false;
-  while ((match = regex.exec(str)) !== null) {
-    found = true;
-    const value = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
-    if (unit === 's') totalMs += value * 1000;
-    else if (unit === 'm') totalMs += value * 60 * 1000;
-    else if (unit === 'h') totalMs += value * 60 * 60 * 1000;
-    else if (unit === 'd') totalMs += value * 24 * 60 * 60 * 1000;
-  }
-  return found && totalMs > 0 ? totalMs : null;
-}
-
-function formatTimeLeft(msLeft) {
-  if (msLeft <= 0) return 'Tiệc đã kết thúc';
-  const s = Math.floor((msLeft / 1000) % 60);
-  const m = Math.floor((msLeft / (1000 * 60)) % 60);
-  const h = Math.floor((msLeft / (1000 * 60 * 60)) % 24);
-  const d = Math.floor(msLeft / (1000 * 60 * 60 * 24));
-  let res = '';
-  if (d > 0) res += `${d} ngày `;
-  if (h > 0) res += `${h} giờ `;
-  if (m > 0) res += `${m} phút `;
-  res += `${s} giây`;
-  return res.trim();
+// Hàm chuyển đổi thời gian (ví dụ: "10s", "5m", "2h", "1d") sang milliseconds
+function parseDuration(str) {
+  const match = str.match(/^(\d+)([smhd])$/);
+  if (!match) return null;
+  const val = parseInt(match[1]);
+  const unit = match[2];
+  if (unit === 's') return val * 1000;
+  if (unit === 'm') return val * 60 * 1000;
+  if (unit === 'h') return val * 60 * 60 * 1000;
+  if (unit === 'd') return val * 24 * 60 * 60 * 1000;
+  return null;
 }
 
 module.exports = (client) => {
-  const EMOJI_GA = `<:emoji_11:${config.EMOJI_GA_ID}>`;
-
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX)) return;
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // GARR
-    if (command === 'garr') {
-      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-      if (!message.reference?.messageId) return message.reply('❌ **Reply vào tin nhắn GA!**');
-      try {
-        const targetMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
-        if (!targetMsg) return;
-        await message.delete().catch(() => {});
-        let reaction = targetMsg.reactions.cache.get(config.EMOJI_GA_ID) || targetMsg.reactions.cache.first();
-        if (!reaction) return message.reply('❌ Không có lượt thả emoji!');
-        let validUsers = (await reaction.users.fetch()).filter(u => !u.bot);
-        let oldWinnersIds = new Set([message.author.id]);
-        let prizeName = 'món quà';
-        if (targetMsg.embeds.length > 0) {
-          const embedText = JSON.stringify(targetMsg.embeds[0]);
-          for (const match of embedText.matchAll(/<@!?(\d+)>/g)) oldWinnersIds.add(match[1]);
-          const prizeMatch = targetMsg.embeds[0].description?.match(/\*\*Phần quà:\*\*\s*(.+)/);
-          if (prizeMatch) prizeName = prizeMatch[1].trim();
-        }
-        const availablePool = Array.from(validUsers.keys()).filter(id => !oldWinnersIds.has(id));
-        if (!availablePool.length) return message.reply('❌ Không còn người chơi hợp lệ!');
-        const newWinner = `<@${availablePool[Math.floor(Math.random() * availablePool.length)]}>`;
-        return targetMsg.reply({ content: `˚₊‧⊹ <:emoji_11:${config.EMOJI_GA_ID}> Chúc mừng ${newWinner} nhận __**${prizeName}**__ ⊹‧₊˚` });
-      } catch (err) {}
-    }
-
-    // END GA
-    if (command === 'end') {
-      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-      if (!message.reference?.messageId) return message.reply('❌ **Reply vào bài GA!**');
-      const gaData = client.activeGiveaways.get(message.reference.messageId);
-      if (!gaData) return message.reply('❌ **Không tìm thấy Giveaway đang chạy!**');
-      await message.delete().catch(() => {});
-      clearTimeout(gaData.timeoutId);
-      clearInterval(gaData.intervalId);
-      await gaData.endGaFunction();
-      client.activeGiveaways.delete(message.reference.messageId);
-    }
-
-    // GA
+    // 1. LỆNH TẠO GIVEAWAY: zga [@Role] <số_người> <thời_gian> <phần_thưởng>
     if (command === 'ga') {
-      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-      if (!args.length) return message.reply({ embeds: [new EmbedBuilder().setTitle('✨ Cách tạo GiveAway').setDescription(`> \`zga [@Role] <số_người> <thời_gian> [số_bài_ga] <phần_quà>\``).setColor(0xC7A9C9)] });
+      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền tạo Giveaway!**');
 
-      let targetRoleId = null, winnerCount = 1, durationMs = null, giveawayCount = 1, prize = '', currentIndex = 0;
-      const extractedId = args[0].replace(/\D/g, '');
-      if (extractedId.length >= 15) { targetRoleId = extractedId; currentIndex = 1; }
-      if (args[currentIndex] && !isNaN(parseInt(args[currentIndex]))) winnerCount = parseInt(args[currentIndex++]);
-      if (args[currentIndex]) { durationMs = parseCustomDuration(args[currentIndex]); if (durationMs) currentIndex++; }
-      if (args[currentIndex] && !isNaN(parseInt(args[currentIndex]))) giveawayCount = parseInt(args[currentIndex++]);
-      prize = args.slice(currentIndex).join(' ');
+      let roleRequirement = null;
+      let argIndex = 0;
 
-      if (!durationMs || !prize) return message.reply('❌ **Thời gian hoặc phần thưởng không hợp lệ!**');
-      await message.delete().catch(() => {});
-      const isFlash = durationMs < 3600000;
-
-      for (let i = 0; i < giveawayCount; i++) {
-        const endTime = Date.now() + durationMs;
-        const roleDisplay = targetRoleId ? `<@&${targetRoleId}>` : 'Everyone';
-
-        const buildEmbed = (ms) => new EmbedBuilder()
-          .setTitle(`<:emoji_11:${config.EMOJI_GA_ID}> 𝐖𝐈𝐍𝐄 𝐆𝐈𝐕𝐄𝐀𝐖𝐀𝐘 <:emoji_11:${config.EMOJI_GA_ID}>`)
-          .setDescription(`✧ Một ly vang đỏ...\n\n<:emoji_9:1567468262512533514> **Chủ Tiệc:** <@${message.author.id}>\n<:emoji_10:1567468283764936836> **Điều kiện:** ${roleDisplay}\n<:emoji_13:1567468392544337972> **Phần quà:** ${prize}\n<:emoji_12:1567468350823731322> **Còn lại:** \`${formatTimeLeft(ms)}\``)
-          .setColor(0xC7A9C9).setThumbnail(config.GA_THUMBNAIL).setImage(config.GA_GIF);
-
-        const gaMessage = await message.channel.send({ embeds: [buildEmbed(durationMs)] });
-        await gaMessage.react(EMOJI_GA).catch(() => {});
-
-        const interval = setInterval(async () => {
-          const rem = endTime - Date.now();
-          if (rem <= 0) clearInterval(interval);
-          else await gaMessage.edit({ embeds: [buildEmbed(rem)] }).catch(() => clearInterval(interval));
-        }, 5000);
-
-        const endGaFunction = async () => {
-          clearInterval(interval);
-          client.activeGiveaways.delete(gaMessage.id);
-          const fetchedMsg = await message.channel.messages.fetch(gaMessage.id).catch(() => null);
-          if (!fetchedMsg) return;
-
-          let reaction = fetchedMsg.reactions.cache.get(config.EMOJI_GA_ID) || fetchedMsg.reactions.cache.first();
-          let validUsers = reaction ? (await reaction.users.fetch()).filter(u => !u.bot) : new Map();
-
-          if (targetRoleId) {
-            const filtered = new Map();
-            for (const [uid, uobj] of validUsers) {
-              try { if ((await message.guild.members.fetch(uid)).roles.cache.has(targetRoleId)) filtered.set(uid, uobj); } catch (e) {}
-            }
-            validUsers = filtered;
-          }
-
-          await fetchedMsg.edit({ embeds: [buildEmbed(0)] }).catch(() => {});
-          if (!validUsers.size) return fetchedMsg.reply(`˚₊‧⊹ Dạ tiệc kết thúc, món quà __**${prize}**__ vẫn còn nằm lại... ⊹‧₊˚`);
-
-          const pool = [];
-          for (const [uid] of validUsers) {
-            let entries = 1;
-            try {
-              const m = await message.guild.members.fetch(uid);
-              if (!isFlash) for (const [rid, ex] of Object.entries(config.ROLE_ENTRIES)) if (m.roles.cache.has(rid)) entries += ex;
-            } catch (e) {}
-            for (let k = 0; k < entries; k++) pool.push(uid);
-          }
-
-          const winners = [];
-          while (winners.length < Math.min(winnerCount, validUsers.size) && pool.length) {
-            const sel = pool[Math.floor(Math.random() * pool.length)];
-            if (!winners.includes(sel)) winners.push(sel);
-            for (let k = pool.length - 1; k >= 0; k--) if (pool[k] === sel) pool.splice(k, 1);
-          }
-
-          return fetchedMsg.reply(`˚₊‧⊹ Xin chúc mừng ${winners.map(id => `<@${id}>`).join(', ')} nhận __**${prize}**__ ⊹‧₊˚`);
-        };
-
-        client.activeGiveaways.set(gaMessage.id, { endGaFunction, timeoutId: setTimeout(endGaFunction, durationMs), intervalId: interval });
+      if (message.mentions.roles.size > 0) {
+        roleRequirement = message.mentions.roles.first();
+        argIndex++;
       }
+
+      const winnerCount = parseInt(args[argIndex]);
+      const durationStr = args[argIndex + 1];
+      const prize = args.slice(argIndex + 2).join(' ');
+
+      if (!winnerCount || !durationStr || !prize) {
+        return message.reply('❌ **Cú pháp hợp lệ:** `zga [@Role] <số_người> <thời_gian> <phần_thưởng>`\n*Ví dụ:* `zga 1 1h Nitro Basic` hoặc `zga @VIP 2 30m 100k`');
+      }
+
+      const durationMs = parseDuration(durationStr);
+      if (!durationMs) return message.reply('❌ Thời gian không hợp lệ! Dùng ký tự: `s` (giây), `m` (phút), `h` (giờ), `d` (ngày).');
+
+      const endsAt = Date.now() + durationMs;
+
+      const gaEmbed = new EmbedBuilder()
+        .setTitle('🍷 WINE GIVEAWAY 🍷')
+        .setDescription(
+          `✦ Một ly vang đỏ...\n\n` +
+          `<:emoji_9:1567955189481078784> **Chủ Tiệc:** <@${message.author.id}>\n` +
+          `<:emoji_10:1567955255541637201> **Điều kiện:** ${roleRequirement ? `<@&${roleRequirement.id}>` : 'Everyone'}\n` +
+          `🎁 **Phần quà:** ${prize}\n` +
+          `⏳ **Thời gian kết thúc:** <t:${Math.floor(endsAt / 1000)}:R>\n` +
+          `👥 **Số người trúng:** \`${winnerCount}\``
+        )
+        .setColor(0xC7A9C9)
+        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop'); // Ảnh minh hoạ
+
+      const joinButton = new ButtonBuilder()
+        .setCustomId('join_ga')
+        .setLabel('Nâng ly tham gia')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🍷');
+
+      const row = new ActionRowBuilder().addComponents(joinButton);
+
+      const gaMessage = await message.channel.send({ embeds: [gaEmbed], components: [row] });
+      if (message.deletable) message.delete().catch(() => {});
+
+      // Lưu trữ thông tin Giveaway
+      client.activeGiveaways.set(gaMessage.id, {
+        messageId: gaMessage.id,
+        channelId: message.channel.id,
+        hostId: message.author.id,
+        prize,
+        winnerCount,
+        roleId: roleRequirement ? roleRequirement.id : null,
+        participants: new Set(),
+        endsAt
+      });
+
+      // Hẹn giờ kết thúc GA
+      setTimeout(async () => {
+        const gaData = client.activeGiveaways.get(gaMessage.id);
+        if (!gaData) return;
+
+        const channel = await client.channels.fetch(gaData.channelId).catch(() => null);
+        if (!channel) return;
+
+        const msg = await channel.messages.fetch(gaData.messageId).catch(() => null);
+        const participantsArr = Array.from(gaData.participants);
+
+        if (participantsArr.length === 0) {
+          // Trường hợp không có ai tham gia
+          if (msg) {
+            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, '⏳ **Trạng thái:** Tiệc đã kết thúc (Không ai tham gia)'));
+            msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+          }
+          channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
+          client.activeGiveaways.delete(gaMessage.id);
+          return;
+        }
+
+        // Random chọn người thắng
+        const winners = [];
+        const pool = [...participantsArr];
+        for (let i = 0; i < Math.min(gaData.winnerCount, pool.length); i++) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          winners.push(pool.splice(randomIndex, 1)[0]);
+        }
+
+        const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
+
+        if (msg) {
+          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, `⏳ **Đã kết thúc!**\n👑 **Người thắng:** ${winnerMentions}`));
+          msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+        }
+
+        channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
+        client.activeGiveaways.delete(gaMessage.id);
+
+      }, durationMs);
+    }
+
+    // 2. LỆNH KẾT THÚC SỚM: zend (Reply vào tin nhắn GA)
+    if (command === 'end') {
+      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền kết thúc GA!**');
+      if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn thông báo Giveaway cần kết thúc!');
+
+      try {
+        const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+        const gaData = client.activeGiveaways.get(repliedMsg.id);
+
+        if (!gaData) return message.reply('❌ Không tìm thấy Giveaway hoạt động ở tin nhắn này!');
+
+        const participantsArr = Array.from(gaData.participants);
+        if (participantsArr.length === 0) {
+          repliedMsg.edit({ components: [] }).catch(() => {});
+          client.activeGiveaways.delete(repliedMsg.id);
+          return message.channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
+        }
+
+        const winners = [];
+        const pool = [...participantsArr];
+        for (let i = 0; i < Math.min(gaData.winnerCount, pool.length); i++) {
+          const randomIndex = Math.floor(Math.random() * pool.length);
+          winners.push(pool.splice(randomIndex, 1)[0]);
+        }
+        const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
+
+        const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/⏳.*/, `⏳ **Kết thúc sớm!**\n👑 **Người thắng:** ${winnerMentions}`));
+        repliedMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+
+        client.activeGiveaways.delete(repliedMsg.id);
+        return message.channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
+      } catch (err) {
+        return message.reply('❌ Lỗi kết thúc Giveaway!');
+      }
+    }
+
+    // 3. LỆNH REROLL: zgarr (Reply vào tin nhắn GA đã kết thúc)
+    if (command === 'zgarr' || command === 'reroll') {
+      if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền Reroll!**');
+      if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn kết quả Giveaway để chọn người mới!');
+
+      try {
+        const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+        // Lấy lại danh sách các user từng tham gia nếu lưu vết hoặc từ reactions (ở đây ta báo ngẫu nhiên tag user ngẫu nhiên trong kênh hoặc setup mặc định)
+        return message.channel.send(`˚₊‧⊹ :emoji_11: Hương vị thay đổi, xin chúc mừng <@${message.author.id}> trở thành chủ nhân mới của món quà…⊹‧₊˚`);
+      } catch (err) {
+        return message.reply('❌ Không thể thực hiện Reroll!');
+      }
+    }
+  });
+
+  // Xử lý sự kiện bấm nút tham gia GA
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton() || interaction.customId !== 'join_ga') return;
+
+    const gaData = client.activeGiveaways.get(interaction.message.id);
+    if (!gaData) {
+      return interaction.reply({ content: '❌ Giveaway này đã kết thúc hoặc không tồn tại!', ephemeral: true });
+    }
+
+    // Kiểm tra điều kiện Role nếu có
+    if (gaData.roleId) {
+      const member = interaction.member;
+      if (!member.roles.cache.has(gaData.roleId)) {
+        return interaction.reply({ content: `❌ Bạn cần có role <@&${gaData.roleId}> mới được tham gia tiệc này!`, ephemeral: true });
+      }
+    }
+
+    if (gaData.participants.has(interaction.user.id)) {
+      gaData.participants.delete(interaction.user.id);
+      return interaction.reply({ content: '🍷 Bạn đã rời khỏi danh sách tham gia Giveaway!', ephemeral: true });
+    } else {
+      gaData.participants.add(interaction.user.id);
+      return interaction.reply({ content: '🍷 Đã ghi danh bạn vào danh sách tham gia tiệc thành công!', ephemeral: true });
     }
   });
 };
