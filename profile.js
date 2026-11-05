@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const config = require('./config');
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
