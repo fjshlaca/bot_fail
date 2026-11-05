@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { joinVoiceChannel } = require('@discordjs/voice'); // Thêm thư viện Voice
 const express = require('express');
 
 // --- CẤU HÌNH WEB SERVER TREO RENDER ---
@@ -7,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot Discord Giveaway & Moderation đang hoạt động!'));
 app.listen(PORT, () => console.log(`Web Server running on port ${PORT}`));
 
-// --- KHỞI TẠO BOT ---
+// --- KHỞI TẠO BOT (BỔ SUNG INTENT VOICE STATES) ---
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -16,7 +17,8 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildModeration
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildVoiceStates // Bắt buộc để nhận diện người dùng ra/vào voice
   ]
 });
 
@@ -31,6 +33,13 @@ const JAIL_CHANNEL_ID = '1567570022224625817';
 
 const jailData = new Map();
 const activeGiveaways = new Map();
+
+// --- BIẾN TOÀN CỤC CHO VOICE ---
+let voiceConnection = null;
+let isPermanentVoice = false;
+let currentMasterName = '';
+let currentVoiceChannelId = null;
+let voiceAfkTimer = null;
 
 // --- DATA CỐ ĐỊNH (Tối ưu RAM) ---
 const TAUNT_MESSAGES = [
@@ -56,7 +65,7 @@ const TAUNT_MESSAGES = [
   "Sám hối kiểu này chắc Phật tổ cũng phải quỳ gối xin hàng luôn quá! 🙏"
 ];
 
-// CẬP NHẬT GIAO DIỆN: CHUYỂN EMOJI LÊN TITLE VÀ XÓA ✨
+// CHUẨN FORM KHÔNG ✨ VÀ EMOJI LÊN ĐẦU
 const FAIL_STORIES = [
   {
     title: "<:emoji_20:1567861679788658718> Suýt Chạm Tay Đến Báu Vật!",
@@ -171,7 +180,45 @@ async function getTargetMember(message) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER OPTIMIZED MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER VOICE READY] Đã đăng nhập: ${client.user.tag}`);
+});
+
+// --- LẮNG NGHE SỰ KIỆN VOICE ĐỂ TÍNH AFK 5 PHÚT ---
+client.on('voiceStateUpdate', (oldState, newState) => {
+  if (!voiceConnection || isPermanentVoice || !currentVoiceChannelId) return;
+
+  // Nếu có sự thay đổi ra/vào liên quan đến kênh bot đang đứng
+  if (oldState.channelId === currentVoiceChannelId || newState.channelId === currentVoiceChannelId) {
+    const guild = client.guilds.cache.get(oldState.guild.id || newState.guild.id);
+    const channel = guild.channels.cache.get(currentVoiceChannelId);
+
+    if (!channel) return;
+
+    // Đếm số người dùng thật (không phải bot) đang ở trong phòng
+    const humanMembers = channel.members.filter(m => !m.user.bot).size;
+
+    if (humanMembers === 0) {
+      // Nếu không còn ai, bắt đầu đếm ngược 5 phút
+      if (!voiceAfkTimer) {
+        voiceAfkTimer = setTimeout(() => {
+          if (voiceConnection) {
+            voiceConnection.destroy();
+            voiceConnection = null;
+            isPermanentVoice = false;
+            currentMasterName = '';
+            currentVoiceChannelId = null;
+          }
+          voiceAfkTimer = null;
+        }, 5 * 60 * 1000); // 5 phút
+      }
+    } else {
+      // Nếu có người dùng thật ở trong, hủy bộ đếm giờ (nếu có)
+      if (voiceAfkTimer) {
+        clearTimeout(voiceAfkTimer);
+        voiceAfkTimer = null;
+      }
+    }
+  }
 });
 
 client.on('messageCreate', async (message) => {
@@ -179,6 +226,70 @@ client.on('messageCreate', async (message) => {
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
+
+  // ==========================================
+  // 🎤 GỌI BOT VÀO VOICE (zjoin & zjoinv)
+  // ==========================================
+  if (command === 'join' || command === 'joinv') {
+    if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
+
+    const voiceChannel = message.member.voice.channel;
+    if (!voiceChannel) return message.reply('❌ Bạn phải ở trong một kênh thoại trước thì mình mới vào được!');
+
+    // Chống cướp bot: Nếu bot đang ở phòng khác thì từ chối ngay
+    if (voiceConnection && currentVoiceChannelId && currentVoiceChannelId !== voiceChannel.id) {
+      return message.reply(`❌ Mình đang bận phục vụ cho cậu chủ **${currentMasterName}** rồi, vui lòng không làm phiền.`);
+    }
+
+    // Set trạng thái theo lệnh
+    isPermanentVoice = (command === 'joinv');
+    currentMasterName = message.member.displayName || message.author.username;
+    currentVoiceChannelId = voiceChannel.id;
+
+    try {
+      voiceConnection = joinVoiceChannel({
+        channelId: voiceChannel.id,
+        guildId: message.guild.id,
+        adapterCreator: message.guild.voiceAdapterCreator,
+        selfDeaf: false, // Bật loa
+        selfMute: false  // Bật mic
+      });
+
+      // Nếu đang có timer AFK từ trước, hủy nó đi để phục vụ chủ mới
+      if (voiceAfkTimer) {
+        clearTimeout(voiceAfkTimer);
+        voiceAfkTimer = null;
+      }
+
+      const modeText = isPermanentVoice ? 'Cắm chốt vĩnh viễn' : 'Sẽ tự động về sau 5p nếu phòng trống';
+      return message.reply(`✅ Đã có mặt tại **${voiceChannel.name}** để phục vụ cậu chủ **${currentMasterName}**. *(Chế độ: ${modeText})*`);
+    } catch (err) {
+      console.error(err);
+      return message.reply('❌ Đã xảy ra lỗi khi tham gia kênh thoại!');
+    }
+  }
+
+  // ==========================================
+  // 👋 ĐUỔI BOT KHỎI VOICE (zout)
+  // ==========================================
+  if (command === 'out') {
+    if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
+    
+    if (!voiceConnection) return message.reply('❌ Mình đang rảnh rỗi, có ở trong kênh thoại nào đâu!');
+
+    // Rời kênh và reset mọi biến
+    voiceConnection.destroy();
+    voiceConnection = null;
+    isPermanentVoice = false;
+    currentMasterName = '';
+    currentVoiceChannelId = null;
+    if (voiceAfkTimer) {
+      clearTimeout(voiceAfkTimer);
+      voiceAfkTimer = null;
+    }
+
+    return message.reply('👋 Đã nhận lệnh! Chào tạm biệt và chúc các bạn vui vẻ!');
+  }
 
   // ==========================================
   // 🧹 XÓA TIN NHẮN (clear)
@@ -407,8 +518,6 @@ client.on('messageCreate', async (message) => {
 
       if (!result.id) {
         const story = FAIL_STORIES[Math.floor(Math.random() * FAIL_STORIES.length)];
-        
-        // CHỈ RENDER IN ĐẬM VỚI TITLE CHỨA SẴN CẢ EMOJI BÊN TRONG, KHÔNG CÓ THÊM LOGIC ✨ SPARKLES NÀO NỮA
         const failEmbed = new EmbedBuilder()
           .setTitle(commonTitle)
           .setDescription(`**${story.title}**\n\n${story.desc.replace('{USER}', `<@${userId}>`)}`)
