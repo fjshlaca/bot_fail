@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
 const express = require('express');
 
@@ -33,12 +33,9 @@ const JAIL_CHANNEL_ID = '1567570022224625817';
 
 const jailData = new Map();
 const activeGiveaways = new Map();
-
-// --- MAP QUẢN LÝ VOICE THEO TỪNG SERVER (GUILD) ---
-// Key: guildId, Value: { connection, isPermanent, channelId, afkTimer }
 const serverVoices = new Map();
 
-// --- DATA CỐ ĐỊNH (Tối ưu RAM) ---
+// --- DATA CỐ ĐỊNH ---
 const TAUNT_MESSAGES = [
   "Cố lên con trai, nhai kỹ nuốt chậm vào! 💩",
   "Hương vị này có làm em xao xuyến không hả phạm nhân? 😂",
@@ -176,10 +173,10 @@ async function getTargetMember(message) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER MULTI-SERVER VOICE READY] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER ZHELP PANEL READY] Đã đăng nhập: ${client.user.tag}`);
 });
 
-// --- LẮNG NGHE SỰ KIỆN VOICE ĐỂ TÍNH AFK 5 PHÚT THEO TỪNG SERVER ---
+// --- LẮNG NGHE SỰ KIỆN VOICE AFK ---
 client.on('voiceStateUpdate', (oldState, newState) => {
   const guildId = oldState.guild.id || newState.guild.id;
   const sData = serverVoices.get(guildId);
@@ -191,15 +188,12 @@ client.on('voiceStateUpdate', (oldState, newState) => {
     if (!channel) return;
 
     const humanMembers = channel.members.filter(m => !m.user.bot).size;
-
     if (humanMembers === 0) {
       if (!sData.afkTimer) {
         sData.afkTimer = setTimeout(() => {
-          if (sData.connection) {
-            sData.connection.destroy();
-          }
+          if (sData.connection) sData.connection.destroy();
           serverVoices.delete(guildId);
-        }, 5 * 60 * 1000); // 5 phút
+        }, 5 * 60 * 1000);
       }
     } else {
       if (sData.afkTimer) {
@@ -217,30 +211,53 @@ client.on('messageCreate', async (message) => {
   const command = args.shift().toLowerCase();
 
   // ==========================================
-  // 🎤 GỌI BOT VÀO VOICE (zjoin & zjoinv) BẰNG VOICE TEXT CHAT
+  // 📖 LỆNH zhelp (BẢNG ĐIỀU KHIỂN TƯƠNG TÁC)
+  // ==========================================
+  if (command === 'help') {
+    const helpEmbed = new EmbedBuilder()
+      .setTitle('📖 Danh Sách Lệnh — Hệ Thống')
+      .setDescription(
+        `Prefix của bot là **\`z\`**\n` +
+        `Chọn một danh mục từ menu bên dưới để xem chi tiết các lệnh.\n\n` +
+        `**Các danh mục:**\n` +
+        `• **Quản Trị & Kiểm Duyệt**\n` +
+        `• **Hệ Thống Giveaway**\n` +
+        `• **Kho Báu & Gacha**\n` +
+        `• **Trợ Lý Kênh Thoại (Voice)**`
+      )
+      .setColor(0xC7A9C9);
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('help_menu')
+      .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
+      .addOptions([
+        { label: 'Quản Trị & Kiểm Duyệt', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+        { label: 'Hệ Thống Giveaway', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
+        { label: 'Kho Báu & Gacha', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
+        { label: 'Trợ Lý Kênh Thoại (Voice)', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+      ]);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+    return message.channel.send({ embeds: [helpEmbed], components: [row] });
+  }
+
+  // ==========================================
+  // 🎤 GỌI BOT VÀO VOICE (zjoin & zjoinv)
   // ==========================================
   if (command === 'join' || command === 'joinv') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
 
-    // Kiểm tra xem kênh hiện tại có phải là Voice Text Chat hay Channel Voice liên kết không, 
-    // hoặc người dùng đang đứng ở voice nào. Ưu tiên lấy voice tương ứng với Voice Text Chat hoặc Channel.
     let targetVoiceChannel = null;
-
-    // Nếu kênh chat hiện tại là một Voice Channel trực tiếp hoặc Voice Text Chat
     if (message.channel.isVoiceBased()) {
       targetVoiceChannel = message.channel;
     } else if (message.channel.parentId) {
-      // Tìm kênh voice nằm chung danh mục (category) hoặc tìm kênh voice mà channel này gắn kèm
       targetVoiceChannel = message.guild.channels.cache.find(
         c => c.isVoiceBased() && c.parentId === message.channel.parentId
       );
     }
-
-    // Nếu vẫn chưa tìm thấy, lấy phòng voice mà chính người gọi đang ngồi
     if (!targetVoiceChannel && message.member.voice.channel) {
       targetVoiceChannel = message.member.voice.channel;
     }
-
     if (!targetVoiceChannel) {
       return message.reply('❌ Hãy gõ lệnh này tại khung chat của kênh thoại hoặc khi bạn đang ở trong phòng voice!');
     }
@@ -248,7 +265,6 @@ client.on('messageCreate', async (message) => {
     const guildId = message.guild.id;
     const existingVoice = serverVoices.get(guildId);
 
-    // Nếu server này bot đã ở trong một voice khác rồi thì báo bận
     if (existingVoice && existingVoice.channelId !== targetVoiceChannel.id) {
       const busyChannel = message.guild.channels.cache.get(existingVoice.channelId);
       const roomName = busyChannel ? busyChannel.name : 'phòng khác';
@@ -267,9 +283,7 @@ client.on('messageCreate', async (message) => {
         selfMute: false
       });
 
-      if (existingVoice && existingVoice.afkTimer) {
-        clearTimeout(existingVoice.afkTimer);
-      }
+      if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
 
       serverVoices.set(guildId, {
         connection,
@@ -281,20 +295,18 @@ client.on('messageCreate', async (message) => {
 
       return message.reply('Nô tì đến liền ạ');
     } catch (err) {
-      console.error(err);
       return message.reply('❌ Đã xảy ra lỗi khi tham gia kênh thoại!');
     }
   }
 
   // ==========================================
-  // 👋 ĐUỔI BOT KHỎI VOICE TRONG SERVER (zout)
+  // 👋 ĐUỔI BOT KHỎI VOICE (zout)
   // ==========================================
   if (command === 'out') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền sử dụng tính năng này!**');
     
     const guildId = message.guild.id;
     const existingVoice = serverVoices.get(guildId);
-
     if (!existingVoice) return message.reply('❌ Mình đang rảnh rỗi, có ở trong kênh thoại nào của server này đâu!');
 
     existingVoice.connection.destroy();
@@ -317,7 +329,7 @@ client.on('messageCreate', async (message) => {
       const confirmMsg = await message.channel.send(`🧹 **Đã dọn dẹp ${deletedMessages.size - 1} tin nhắn!**`);
       setTimeout(() => confirmMsg.delete().catch(() => {}), 3000);
     } catch (err) {
-      return message.reply('❌ **Lỗi:** Không thể xóa tin nhắn (quá 14 ngày hoặc thiếu quyền)!');
+      return message.reply('❌ **Lỗi:** Không thể xóa tin nhắn!');
     }
   }
 
@@ -326,13 +338,11 @@ client.on('messageCreate', async (message) => {
   // ==========================================
   if (command === 'mute') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-    
     const { member: targetUser, argsShift } = await getTargetMember(message);
     if (!targetUser) return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zmute <thời_gian> [lý_do]`');
 
     const durationMs = parseCustomDuration(args[argsShift]);
-    if (!durationMs) return message.reply('❌ **Thời gian không hợp lệ!** Ví dụ: `zmute 10m`');
-    
+    if (!durationMs) return message.reply('❌ **Thời gian không hợp lệ!**');
     const reason = args.slice(argsShift + 1).join(' ') || 'Không có lý do';
 
     try {
@@ -352,12 +362,10 @@ client.on('messageCreate', async (message) => {
   // ==========================================
   if (command === 'unmute') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-    
     const { member: targetUser, argsShift } = await getTargetMember(message);
     if (!targetUser) return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zunmute [lý_do]`');
 
     const reason = args.slice(argsShift).join(' ') || 'Không có lý do';
-
     try {
       await targetUser.timeout(null, reason);
       const unmuteEmbed = new EmbedBuilder()
@@ -375,12 +383,10 @@ client.on('messageCreate', async (message) => {
   // ==========================================
   if (command === 'ban') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-
     const { member: targetUser, argsShift } = await getTargetMember(message);
     if (!targetUser) return message.reply('❌ **Cú pháp:** `@mention` hoặc **Reply** rồi gõ `zban [lý_do]`');
 
     const reason = args.slice(argsShift).join(' ') || 'Không có lý do';
-
     try {
       await targetUser.ban({ reason });
       const banEmbed = new EmbedBuilder()
@@ -398,22 +404,15 @@ client.on('messageCreate', async (message) => {
   // ==========================================
   if (command === 'tu') {
     if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
-
     const { member: targetUser, argsShift } = await getTargetMember(message);
     const amount = parseInt(args[argsShift]);
-
-    if (!targetUser || isNaN(amount) || amount <= 0) {
-      return message.reply('❌ **Cú pháp:** `ztu <số_lần_ăn_cút> [lý_do]`');
-    }
+    if (!targetUser || isNaN(amount) || amount <= 0) return message.reply('❌ **Cú pháp:** `ztu <số_lần_ăn_cút> [lý_do]`');
 
     const reason = args.slice(argsShift + 1).join(' ') || 'Không có lý do';
-
     try {
       let jailRole = message.guild.roles.cache.find(r => r.name === 'Kẻ Tù Tội');
       if (!jailRole) {
-        jailRole = await message.guild.roles.create({
-          name: 'Kẻ Tù Tội', color: 0x555555, reason: 'Hệ thống Phạt Tù'
-        });
+        jailRole = await message.guild.roles.create({ name: 'Kẻ Tù Tội', color: 0x555555, reason: 'Hệ thống Phạt Tù' });
         message.guild.channels.cache.forEach(async (channel) => {
           const perms = channel.id === JAIL_CHANNEL_ID 
             ? { ViewChannel: true, SendMessages: true, ReadMessageHistory: true }
@@ -430,7 +429,6 @@ client.on('messageCreate', async (message) => {
         .setAuthor({ name: 'Tù ngay con chó', iconURL: message.guild.iconURL({ dynamic: true }) })
         .setDescription(`• **Phạm nhân:** <@${targetUser.id}>\n• **Phạt:** \`zancut\` đủ **${amount} lần** tại <#${JAIL_CHANNEL_ID}>\n• **Lý do:** ${reason}`)
         .setColor(0x34495E);
-
       message.channel.send({ embeds: [jailEmbed] });
 
       const jailChannel = message.guild.channels.cache.get(JAIL_CHANNEL_ID);
@@ -557,7 +555,7 @@ client.on('messageCreate', async (message) => {
           `<:emoji_16:1567861598515896512> Bảo vật: <@&${result.id}>\n` +
           `<:emoji_17:1567861618975449218> Tiến độ: ${storageStatus}\n\n` +
           `      ˚₊‧꒰ა ♔ ໒꒱ ‧₊˚\n\n` +
-          `  𝑹𝒐𝒚𝒂𝙡 𝑻𝒓𝒆𝒂𝒔𝒖𝒓𝒆𝒔\n` +
+          `  𝑹𝒐𝒚𝒂𝒍 𝑻𝒓𝒆𝒂𝒔𝒖𝒓𝒆𝒔\n` +
           ` ZeitHaven • The Royal Collection\n\n` +
           `Một báu vật đã tìm thấy chủ nhân. ♡`
         ).setColor(0xC7A9C9);
@@ -704,6 +702,87 @@ client.on('messageCreate', async (message) => {
 
       activeGiveaways.set(gaMessage.id, { endGaFunction, timeoutId: setTimeout(endGaFunction, durationMs), intervalId: interval });
     }
+  }
+});
+
+// ==========================================
+// 🖱️ XỬ LÝ TƯƠNG TÁC BUTTON & SELECT MENU (zhelp)
+// ==========================================
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isStringSelectMenu() && !interaction.isButton()) return;
+
+  const homeEmbed = new EmbedBuilder()
+    .setTitle('📖 Danh Sách Lệnh — Hệ Thống')
+    .setDescription(
+      `Prefix của bot là **\`z\`**\n` +
+      `Chọn một danh mục từ menu bên dưới để xem chi tiết các lệnh.\n\n` +
+      `**Các danh mục:**\n` +
+      `• **Quản Trị & Kiểm Duyệt**\n` +
+      `• **Hệ Thống Giveaway**\n` +
+      `• **Kho Báu & Gacha**\n` +
+      `• **Trợ Lý Kênh Thoại (Voice)**`
+    )
+    .setColor(0xC7A9C9);
+
+  const homeMenu = new StringSelectMenuBuilder()
+    .setCustomId('help_menu')
+    .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
+    .addOptions([
+      { label: 'Quản Trị & Kiểm Duyệt', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+      { label: 'Hệ Thống Giveaway', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
+      { label: 'Kho Báu & Gacha', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
+      { label: 'Trợ Lý Kênh Thoại (Voice)', description: 'Lệnh join, joinv, out voice...', value: 'voice' }
+    ]);
+
+  const homeRow = new ActionRowBuilder().addComponents(homeMenu);
+
+  if (interaction.isStringSelectMenu() && interaction.customId === 'help_menu') {
+    const selected = interaction.values[0];
+    let detailEmbed = new EmbedBuilder().setColor(0xC7A9C9);
+
+    if (selected === 'mod') {
+      detailEmbed.setTitle('🛡️ Quản Trị & Kiểm Duyệt')
+      .setDescription(
+        '`zclear <1-100>` — Xóa nhanh tin nhắn trong kênh\n' +
+        '`zmute <thời_gian> [lý_do]` — Cấm ngôn (Mention hoặc Reply)\n' +
+        '`zunmute [lý_do]` — Gỡ cấm ngôn\n' +
+        '`zban [lý_do]` — Ban thành viên ra khỏi server\n' +
+        '`ztu <số_lần> [lý_do]` — Phạt tù thành viên\n' +
+        '`ztron` — Vượt ngục (20% thành công)\n' +
+        '`zancut` — Ăn cút sám hối để ra tù'
+      );
+    } else if (selected === 'ga') {
+      detailEmbed.setTitle('🎁 Hệ Thống Giveaway')
+      .setDescription(
+        '`zga [@Role] <số_người> <thời_gian> [số_bài] <quà>` — Tạo Giveaway\n' +
+        '`zend` — Kết thúc bài Giveaway sớm (Reply vào bài GA)\n' +
+        '`zgarr` — Reroll chọn lại người trúng giải (Reply vào bài GA)'
+      );
+    } else if (selected === 'gacha') {
+      detailEmbed.setTitle('💎 Kho Báu & Gacha')
+      .setDescription(
+        '`zrdrole` — Khai mở hòm báu vật nhận Royal Role (cần có role điều kiện)'
+      );
+    } else if (selected === 'voice') {
+      detailEmbed.setTitle('🎤 Trợ Lý Kênh Thoại (Voice)')
+      .setDescription(
+        '`zjoin` — Gọi bot vào voice chat hiện tại (tự out sau 5p trống)\n' +
+        '`zjoinv` — Cắm chốt vĩnh viễn trong voice 24/7\n' +
+        '`zout` — Đuổi bot rời khỏi voice'
+      );
+    }
+
+    const backButton = new ButtonBuilder()
+      .setCustomId('help_home')
+      .setLabel('Quay về')
+      .setStyle(ButtonStyle.Secondary);
+
+    const backRow = new ActionRowBuilder().addComponents(backButton);
+    return interaction.update({ embeds: [detailEmbed], components: [backRow] });
+  }
+
+  if (interaction.isButton() && interaction.customId === 'help_home') {
+    return interaction.update({ embeds: [homeEmbed], components: [homeRow] });
   }
 });
 
