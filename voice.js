@@ -1,15 +1,21 @@
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const googleTTS = require('google-tts-api');
-const config = require('./config');
-const fs = require('fs');
-const { Readable } = require('stream');
-
-// Sửa dứt điểm lỗi câm: Trỏ đường dẫn chính xác và ép quyền chạy cho FFmpeg trên Render
+// LỆNH ÉP QUYỀN CHO FFMPEG - BẮT BUỘC ĐỂ TRÊN CÙNG
 const ffmpegPath = require('ffmpeg-static');
 process.env.FFMPEG_PATH = ffmpegPath;
 try {
-  if (ffmpegPath) fs.chmodSync(ffmpegPath, '777');
+  const fs = require('fs');
+  fs.chmodSync(ffmpegPath, '777');
 } catch (e) {}
+
+const { 
+  joinVoiceChannel, 
+  createAudioPlayer, 
+  createAudioResource, 
+  VoiceConnectionStatus, 
+  entersState 
+} = require('@discordjs/voice');
+const googleTTS = require('google-tts-api');
+const { Readable } = require('stream');
+const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
@@ -17,30 +23,34 @@ function isGAAdmin(member) {
 }
 
 module.exports = (client) => {
-  // Quản lý AFK 5 phút
+  // BỘ LỌC AFK: CHỈ ÁP DỤNG CHO ZJOIN (isPermanent = false) VÀ PHÒNG TRỐNG TỰ ĐỘNG OUT
   client.on('voiceStateUpdate', (oldState, newState) => {
     const guildId = oldState.guild.id || newState.guild.id;
     const sData = client.serverVoices.get(guildId);
-    if (!sData || sData.isPermanent || !sData.channelId) return;
+    if (!sData || !sData.channelId) return;
 
-    if (oldState.channelId === sData.channelId || newState.channelId === sData.channelId) {
-      const guild = client.guilds.cache.get(guildId);
-      const channel = guild.channels.cache.get(sData.channelId);
-      if (!channel) return;
+    const guild = client.guilds.cache.get(guildId);
+    const channel = guild.channels.cache.get(sData.channelId);
+    if (!channel) return;
 
-      const humanMembers = channel.members.filter(m => !m.user.bot).size;
-      if (humanMembers === 0) {
-        if (!sData.afkTimer) {
-          sData.afkTimer = setTimeout(() => {
-            if (sData.connection) sData.connection.destroy();
-            client.serverVoices.delete(guildId);
-          }, 5 * 60 * 1000);
-        }
-      } else {
-        if (sData.afkTimer) {
-          clearTimeout(sData.afkTimer);
-          sData.afkTimer = null;
-        }
+    // Đếm số người thật (không tính bot)
+    const humanMembers = channel.members.filter(m => !m.user.bot).size;
+
+    // KHI PHÒNG KHÔNG CÓ AI VÀ LÀ LỆNH ZJOIN (Không phải vĩnh viễn)
+    if (humanMembers === 0 && !sData.isPermanent) {
+      if (!sData.afkTimer) {
+        sData.afkTimer = setTimeout(() => {
+          if (sData.connection) {
+            sData.connection.destroy();
+          }
+          client.serverVoices.delete(guildId);
+        }, 5 * 60 * 1000); // Đếm lùi 5 phút
+      }
+    } else {
+      // NẾU CÓ NGƯỜI TRONG PHÒNG, HOẶC LÀ ZJOINV -> HỦY BỘ ĐẾM OUT
+      if (sData.afkTimer) {
+        clearTimeout(sData.afkTimer);
+        sData.afkTimer = null;
       }
     }
   });
@@ -50,24 +60,19 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // 🎤 LỆNH JOIN VOICE
+    // 🎤 LỆNH JOIN VÀ JOINV
     if (command === 'join' || command === 'joinv') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
+      
       let targetVoiceChannel = null;
       if (message.channel.isVoiceBased()) targetVoiceChannel = message.channel;
       else if (message.channel.parentId) {
         targetVoiceChannel = message.guild.channels.cache.find(c => c.isVoiceBased() && c.parentId === message.channel.parentId);
       }
       if (!targetVoiceChannel && message.member.voice.channel) targetVoiceChannel = message.member.voice.channel;
-      if (!targetVoiceChannel) return message.reply('❌ Hãy gõ tại khung chat voice hoặc khi bạn đang ở trong voice!');
+      if (!targetVoiceChannel) return message.reply('❌ Hãy gõ lệnh khi đang ở trong phòng Voice!');
 
       const guildId = message.guild.id;
-      const existingVoice = client.serverVoices.get(guildId);
-      if (existingVoice && existingVoice.channelId !== targetVoiceChannel.id) {
-        const busyChannel = message.guild.channels.cache.get(existingVoice.channelId);
-        return message.reply(`❌ Mình đang bận phục vụ cho cậu chủ **${existingVoice.masterName}** tại **${busyChannel ? busyChannel.name : 'phòng khác'}** rồi!`);
-      }
-
       const isPermanent = (command === 'joinv');
       const masterName = message.member.displayName || message.author.username;
 
@@ -76,17 +81,32 @@ module.exports = (client) => {
           channelId: targetVoiceChannel.id,
           guildId: guildId,
           adapterCreator: message.guild.voiceAdapterCreator,
-          selfDeaf: false,
+          selfDeaf: true, // Tai bịt lại để chống bị Discord phạt vì không nghe audio
           selfMute: false
         });
 
-        if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
-        
+        // BÙA CHÚ BÁM RỄ VĨNH VIỄN: CHỐNG LẠI LỆNH ĐÁ AFK 5 PHÚT CỦA DISCORD API
+        connection.on(VoiceConnectionStatus.Disconnected, async () => {
+          try {
+            await Promise.race([
+              entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
+              entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
+            ]);
+          } catch (error) {
+            // Nếu bị server Discord đá ra (bị Disconnected) mà chưa bị Destroyed (chưa dùng zout)
+            const voiceData = client.serverVoices.get(guildId);
+            if (voiceData && voiceData.connection && voiceData.connection.state.status !== 'destroyed') {
+              // Lập tức nhảy vào lại phòng để cắm rễ
+              voiceData.connection.rejoin(); 
+            }
+          }
+        });
+
         const player = createAudioPlayer();
         
-        // Bắt lỗi âm thanh để bot không chết ngầm
+        // Theo dõi lỗi chết yểu để kịp thời báo cáo
         player.on('error', error => {
-          console.error('Lỗi phát âm thanh:', error.message);
+          console.error('Lỗi phát Audio:', error.message);
         });
 
         connection.subscribe(player);
@@ -100,52 +120,44 @@ module.exports = (client) => {
           player 
         });
 
-        return message.reply('Nô tì đến liền ạ');
+        return message.reply(`✅ Nô tì đã tham gia phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ vĩnh viễn)' : 'zjoin (Out sau 5p nếu không có ai)'}**`);
       } catch (err) {
-        return message.reply('❌ Lỗi tham gia voice!');
+        return message.reply('❌ Lỗi kết nối vào voice!');
       }
     }
 
-    // 🔊 LỆNH zs <nội_dung> 
+    // 🔊 LỆNH ZS - ĐÃ BYPASS 403 GOOGLE
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
 
       if (!existingVoice) {
-        return message.reply('❌ Bot chưa ở trong kênh thoại nào cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
+        return message.reply('❌ Bot chưa vào kênh thoại! Dùng `zjoin` hoặc `zjoinv` trước.');
       }
 
       const textToSpeak = args.join(' ');
-      if (!textToSpeak) {
-        return message.reply('❌ **Vui lòng nhập nội dung cần bot nói!** Ví dụ: `zs chao xìn`');
-      }
-
-      if (textToSpeak.length > 200) {
-        return message.reply('❌ **Nội dung quá dài!** Vui lòng nhập dưới 200 ký tự.');
-      }
+      if (!textToSpeak) return message.reply('❌ **Nhập nội dung đi cậu chủ!** VD: `zs ê`');
+      if (textToSpeak.length > 200) return message.reply('❌ **Nội dung quá dài!** Xin hãy nhập dưới 200 ký tự.');
 
       try {
-        // Fix dứt điểm 403: Tải audio về làm bộ đệm ảo thay vì đưa URL mạng cho FFmpeg
+        // TẢI AUDIO THÀNH CHUỖI MÃ BASE64 THAY VÌ LINK ĐỂ NE TRÁNH BỊ GOOGLE CHẶN IP / CHẶN FFMPEG
         const base64Audio = await googleTTS.getAudioBase64(textToSpeak, {
           lang: 'vi',
           slow: false,
           host: 'https://translate.google.com',
         });
-        
+
+        // Ép dữ liệu thành Stream âm thanh thô
         const audioBuffer = Buffer.from(base64Audio, 'base64');
         const stream = Readable.from(audioBuffer);
 
-        const resource = createAudioResource(stream, { 
-          inlineVolume: true 
-        });
-        resource.volume.setVolume(2.5); 
-
+        const resource = createAudioResource(stream);
         existingVoice.player.play(resource);
-        return message.react('🗣️').catch(() => {});
 
+        return message.react('🗣️').catch(() => {});
       } catch (err) {
-        console.error(err);
-        return message.reply('❌ Đã xảy ra lỗi khi tạo giọng đọc!');
+        console.error("Lỗi khi tải TTS:", err);
+        return message.reply('❌ Hệ thống giọng đọc đang gặp sự cố kết nối tới Google!');
       }
     }
 
@@ -156,6 +168,7 @@ module.exports = (client) => {
       const existingVoice = client.serverVoices.get(guildId);
       if (!existingVoice) return message.reply('❌ Mình đang rảnh, có ở trong voice nào đâu!');
       
+      // Hủy diệt connection -> State sẽ chuyển thành 'destroyed', event Disconnected ở trên sẽ không tự rejoin nữa!
       existingVoice.connection.destroy();
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
