@@ -38,16 +38,16 @@ module.exports = (client) => {
     gStats.get(today).total = member.guild.memberCount;
   });
 
-  // 2. Lệnh xem thống kê: zstats <3 | 7 | 30>
+  // 2. Lệnh xem thống kê: zstats (mặc định 1 ngày) hoặc zstats <3 | 7 | 30>
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX)) return;
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command === 'stats' || command === 'thongke') {
-      const days = parseInt(args[0]) || 7; // Mặc định xem 7 ngày nếu không nhập
-      if (![3, 7, 30].includes(days)) {
-        return message.reply('❌ **Cú pháp hợp lệ:** `zstats 3`, `zstats 7` hoặc `zstats 30`');
+      const days = parseInt(args[0]) || 1; // Mặc định là 1 ngày nếu không nhập số phía sau
+      if (![1, 3, 7, 30].includes(days)) {
+        return message.reply('❌ **Cú pháp hợp lệ:** `zstats`, `zstats 3`, `zstats 7` hoặc `zstats 30`');
       }
 
       const guildId = message.guild.id;
@@ -68,11 +68,11 @@ module.exports = (client) => {
       }
 
       const statsEmbed = new EmbedBuilder()
-        .setTitle(`📊 Thống Kê Biến Động Thành Viên (${days} Ngày Qua)`)
+        .setTitle(`📊 Thống Kê Biến Động Thành Viên (${days === 1 ? 'Hôm Nay' : `${days} Ngày Qua`})`)
         .setDescription(
           `• **Tổng số thành viên hiện tại:** \`${currentTotal} mem\`\n` +
-          `• **Số mem gia nhập (Join):** \`+${totalJoined} mem\`\n` +
-          `• **Số mem rời đi (Leave):** \`-${totalLeft} mem\`\n` +
+          `• **Số mem gia nhập :** \`+${totalJoined} mem\`\n` +
+          `• **Số mem rời đi :** \`-${totalLeft} mem\`\n` +
           `• **Biến động thực tế:** \`${totalJoined - totalLeft >= 0 ? '+' : ''}${totalJoined - totalLeft} mem\``
         )
         .setColor(0xC7A9C9)
