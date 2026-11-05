@@ -7,6 +7,7 @@ module.exports = (client) => {
     const args = message.content.slice((config.PREFIX || 'z').length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
+    // Lệnh zavt / zcheck: Tất cả mọi người trong server đều được phép dùng
     if (command === 'avt' || command === 'check') {
       let targetMember = message.mentions.members.first();
 
@@ -27,21 +28,23 @@ module.exports = (client) => {
       const serverBanner = targetMember.bannerURL({ dynamic: true, size: 1024 }) || gBanner;
 
       const embed = new EmbedBuilder()
-        .setTitle(` Hồ Sơ: ${targetUser.tag}`)
+        .setTitle(`🖼️ Hồ Sơ: ${targetUser.tag}`)
         .setImage(serverAvatar)
         .setDescription(`• **ID:** \`${targetUser.id}\`\n• **Chế độ:** \`Server (Avatar)\``)
         .setColor(0xC7A9C9);
 
-      const btn1 = new ButtonBuilder().setCustomId(`prof_server_${targetUser.id}`).setLabel('Server').setStyle(ButtonStyle.Secondary).setDisabled(true);
-      const btn2 = new ButtonBuilder().setCustomId(`prof_sbanner_${targetUser.id}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary);
-      const btn3 = new ButtonBuilder().setCustomId(`prof_global_${targetUser.id}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
+      // Lưu trữ ID của người gọi lệnh vào customId để xác thực quyền bấm nút sau này (format: prof_action_targetId_authorId)
+      const authorId = message.author.id;
+      const btn1 = new ButtonBuilder().setCustomId(`prof_server_${targetUser.id}_${authorId}`).setLabel('Server').setStyle(ButtonStyle.Secondary).setDisabled(true);
+      const btn2 = new ButtonBuilder().setCustomId(`prof_sbanner_${targetUser.id}_${authorId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary);
+      const btn3 = new ButtonBuilder().setCustomId(`prof_global_${targetUser.id}_${authorId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
 
       const row = new ActionRowBuilder().addComponents(btn1, btn2, btn3);
       return message.channel.send({ embeds: [embed], components: [row] });
     }
   });
 
-  // Xử lý sự kiện bấm nút tương tác
+  // Xử lý sự kiện bấm nút tương tác (Có kiểm tra bảo mật chủ nhân bảng)
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('prof_')) return;
@@ -50,13 +53,18 @@ module.exports = (client) => {
       const parts = interaction.customId.split('_');
       const type = parts[1];
       const userId = parts[2];
+      const ownerId = parts[3]; // ID của người đã gõ lệnh zavt ban đầu
+
+      // Bảo mật: Nếu người bấm không phải là người gõ lệnh -> Chặn và báo lỗi ẩn
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '❌ **Bạn không phải là người gọi lệnh này nên không thể tương tác với bảng hồ sơ này!**', ephemeral: true });
+      }
 
       const member = await interaction.guild.members.fetch(userId).catch(() => null);
       if (!member) {
         return interaction.reply({ content: '❌ Không tìm thấy thành viên trong server!', ephemeral: true });
       }
 
-      // Bắt buộc fetch user để lấy đầy đủ banner từ API Discord
       const user = await member.user.fetch({ force: true }).catch(() => member.user);
 
       const gAvatar = user.displayAvatarURL({ dynamic: true, size: 1024 });
@@ -65,35 +73,35 @@ module.exports = (client) => {
       const sAvatar = member.avatar ? member.displayAvatarURL({ dynamic: true, size: 1024 }) : gAvatar;
       const sBanner = member.bannerURL({ dynamic: true, size: 1024 }) || gBanner;
 
-      const embed = new EmbedBuilder().setTitle(` Hồ Sơ: ${user.tag}`).setColor(0xC7A9C9);
+      const embed = new EmbedBuilder().setTitle(`🖼️ Hồ Sơ: ${user.tag}`).setColor(0xC7A9C9);
 
       let b1, b2, b3;
 
       if (type === 'server') {
         embed.setImage(sAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Avatar)\``);
-        b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary).setDisabled(true);
-        b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary);
-        b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
+        b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}_${ownerId}`).setLabel('Server').setStyle(ButtonStyle.Secondary).setDisabled(true);
+        b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}_${ownerId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary);
+        b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}_${ownerId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
       } 
       else if (type === 'sbanner') {
         const displayBanner = sBanner || sAvatar;
         embed.setImage(displayBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Banner)\``);
-        b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
-        b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary).setDisabled(true);
-        b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
+        b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}_${ownerId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
+        b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}_${ownerId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary).setDisabled(true);
+        b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}_${ownerId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
       } 
       else if (type === 'global' || type === 'gavatar') {
         embed.setImage(gAvatar).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Avatar cá nhân)\``);
-        b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary).setDisabled(true);
-        b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary);
-        b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
+        b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}_${ownerId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary).setDisabled(true);
+        b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}_${ownerId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary);
+        b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}_${ownerId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
       } 
       else if (type === 'gbanner') {
         const displayGBanner = gBanner || gAvatar;
         embed.setImage(displayGBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Banner cá nhân)\``);
-        b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary);
-        b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary).setDisabled(true);
-        b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
+        b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}_${ownerId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary);
+        b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}_${ownerId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary).setDisabled(true);
+        b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}_${ownerId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
       }
 
       const row = new ActionRowBuilder().addComponents(b1, b2, b3);
