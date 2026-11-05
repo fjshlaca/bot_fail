@@ -20,16 +20,21 @@ module.exports = (client) => {
       if (!targetMember) targetMember = message.member;
       const targetUser = targetMember.user;
 
-      const serverAvatar = targetMember.displayAvatarURL({ dynamic: true, size: 1024 });
-      const serverBanner = targetMember.bannerURL({ dynamic: true, size: 1024 }) || targetUser.bannerURL({ dynamic: true, size: 1024 });
+      // Lấy ảnh server và global cá nhân
+      const gAvatar = targetUser.displayAvatarURL({ dynamic: true, size: 1024 });
+      const gBanner = targetUser.bannerURL({ dynamic: true, size: 1024 });
+      
+      // Nếu user không set avatar riêng cho server, mặc định lấy avt global
+      const serverAvatar = targetMember.avatar ? targetMember.displayAvatarURL({ dynamic: true, size: 1024 }) : gAvatar;
+      const serverBanner = targetMember.bannerURL({ dynamic: true, size: 1024 }) || gBanner;
 
       const embed = new EmbedBuilder()
-        .setTitle(`🖼️ Hồ Sơ Server: ${targetUser.tag}`)
+        .setTitle(`🖼️ Hồ Sơ: ${targetUser.tag}`)
         .setImage(serverAvatar)
         .setDescription(`• **ID:** \`${targetUser.id}\`\n• **Chế độ:** \`Server (Avatar)\``)
         .setColor(0xC7A9C9);
 
-      // Cả 3 nút đều là màu xám (Secondary), nút đang xem sẽ bị disable để làm nổi bật
+      // Cả 3 nút màu xám (Secondary), nút đang xem bị disable
       const btn1 = new ButtonBuilder().setCustomId(`prof_server_${targetUser.id}`).setLabel('Server').setStyle(ButtonStyle.Secondary).setDisabled(true);
       const btn2 = new ButtonBuilder().setCustomId(`prof_sbanner_${targetUser.id}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary);
       const btn3 = new ButtonBuilder().setCustomId(`prof_global_${targetUser.id}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
@@ -52,12 +57,13 @@ module.exports = (client) => {
       }
 
       const user = member.user;
-      const sAvatar = member.displayAvatarURL({ dynamic: true, size: 1024 });
-      const sBanner = member.bannerURL({ dynamic: true, size: 1024 }) || user.bannerURL({ dynamic: true, size: 1024 });
       const gAvatar = user.displayAvatarURL({ dynamic: true, size: 1024 });
       const gBanner = user.bannerURL({ dynamic: true, size: 1024 });
+      
+      const sAvatar = member.avatar ? member.displayAvatarURL({ dynamic: true, size: 1024 }) : gAvatar;
+      const sBanner = member.bannerURL({ dynamic: true, size: 1024 }) || gBanner;
 
-      const embed = new EmbedBuilder().setTitle(` Hồ Sơ: ${user.tag}`).setColor(0xC7A9C9);
+      const embed = new EmbedBuilder().setTitle(`🖼️ Hồ Sơ: ${user.tag}`).setColor(0xC7A9C9);
 
       let b1, b2, b3;
 
@@ -68,10 +74,9 @@ module.exports = (client) => {
         b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
       } 
       else if (type === 'sbanner') {
-        if (!sBanner) {
-          return interaction.reply({ content: '❌ Người dùng này không có Banner Server!', ephemeral: true });
-        }
-        embed.setImage(sBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Banner)\``);
+        // Nếu không có banner server lẫn global thì dùng avatar thay thế để không bị lỗi
+        const displayBanner = sBanner || sAvatar;
+        embed.setImage(displayBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Server (Banner)\``);
         b1 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
         b2 = new ButtonBuilder().setCustomId(`prof_sbanner_${userId}`).setLabel('Banner (Server)').setStyle(ButtonStyle.Secondary).setDisabled(true);
         b3 = new ButtonBuilder().setCustomId(`prof_global_${userId}`).setLabel('Global').setStyle(ButtonStyle.Secondary);
@@ -83,10 +88,8 @@ module.exports = (client) => {
         b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
       } 
       else if (type === 'gbanner') {
-        if (!gBanner) {
-          return interaction.reply({ content: '❌ Người dùng này không có Banner Global cá nhân!', ephemeral: true });
-        }
-        embed.setImage(gBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Banner cá nhân)\``);
+        const displayGBanner = gBanner || gAvatar;
+        embed.setImage(displayGBanner).setDescription(`• **ID:** \`${userId}\`\n• **Chế độ:** \`Global (Banner cá nhân)\``);
         b1 = new ButtonBuilder().setCustomId(`prof_gavatar_${userId}`).setLabel('Global Avatar').setStyle(ButtonStyle.Secondary);
         b2 = new ButtonBuilder().setCustomId(`prof_gbanner_${userId}`).setLabel('Banner (Global)').setStyle(ButtonStyle.Secondary).setDisabled(true);
         b3 = new ButtonBuilder().setCustomId(`prof_server_${userId}`).setLabel('Server').setStyle(ButtonStyle.Secondary);
