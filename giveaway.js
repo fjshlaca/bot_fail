@@ -111,7 +111,7 @@ module.exports = (client) => {
         }
 
         if (validParticipants.length === 0) {
-          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
+          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/.*|Còn lại:.*/, ' **Còn lại:** Tiệc đã kết thúc'));
           msg.edit({ embeds: [endedEmbed] }).catch(() => {});
           channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
           client.activeGiveaways.delete(gaMessage.id);
@@ -127,7 +127,7 @@ module.exports = (client) => {
 
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
+        const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/.*|Còn lại:.*/, ` **Còn lại:** Tiệc đã kết thúc`));
         msg.edit({ embeds: [endedEmbed] }).catch(() => {});
 
         channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
@@ -180,7 +180,7 @@ module.exports = (client) => {
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
         if (repliedMsg.embeds[0]) {
-          const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/⏳.*|Còn lại:.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
+          const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/.*|Còn lại:.*/, ` **Còn lại:** Tiệc đã kết thúc`));
           repliedMsg.edit({ embeds: [endedEmbed] }).catch(() => {});
         } else {
           repliedMsg.edit({}).catch(() => {});
