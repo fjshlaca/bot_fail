@@ -6,7 +6,6 @@ function isGAAdmin(member) {
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
 }
 
-// Hàm chuyển đổi thời gian (ví dụ: "10s", "5m", "2h", "1d") sang milliseconds
 function parseDuration(str) {
   const match = str.match(/^(\d+)([smhd])$/);
   if (!match) return null;
@@ -42,14 +41,15 @@ module.exports = (client) => {
       const prize = args.slice(argIndex + 2).join(' ');
 
       if (!winnerCount || !durationStr || !prize) {
-        return message.reply('❌ **Cú pháp hợp lệ:** `zga [@Role] <số_người> <thời_gian> <phần_thưởng>`\n*Ví dụ:* `zga 1 1h Nitro Basic` hoặc `zga @VIP 2 30m 100k`');
+        return message.reply('❌ **Cú pháp hợp lệ:** `zga [@Role] <số_người> <thời_gian> <phần_thưởng>`');
       }
 
       const durationMs = parseDuration(durationStr);
-      if (!durationMs) return message.reply('❌ Thời gian không hợp lệ! Dùng ký tự: `s` (giây), `m` (phút), `h` (giờ), `d` (ngày).');
+      if (!durationMs) return message.reply('❌ Thời gian không hợp lệ! Dùng ký tự: `s`, `m`, `h`, `d`.');
 
       const endsAt = Date.now() + durationMs;
 
+      // Giao diện chuẩn gốc chính xác như ảnh mẫu 3aa848 của Đức
       const gaEmbed = new EmbedBuilder()
         .setTitle('🍷 WINE GIVEAWAY 🍷')
         .setDescription(
@@ -57,11 +57,10 @@ module.exports = (client) => {
           `<:emoji_9:1567955189481078784> **Chủ Tiệc:** <@${message.author.id}>\n` +
           `<:emoji_10:1567955255541637201> **Điều kiện:** ${roleRequirement ? `<@&${roleRequirement.id}>` : 'Everyone'}\n` +
           `🎁 **Phần quà:** ${prize}\n` +
-          `⏳ **Thời gian kết thúc:** <t:${Math.floor(endsAt / 1000)}:R>\n` +
-          `👥 **Số người trúng:** \`${winnerCount}\``
+          `⏳ **Còn lại:** <t:${Math.floor(endsAt / 1000)}:R>`
         )
         .setColor(0xC7A9C9)
-        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop'); // Ảnh minh hoạ
+        .setImage('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=1000&auto=format&fit=crop');
 
       const joinButton = new ButtonBuilder()
         .setCustomId('join_ga')
@@ -74,7 +73,6 @@ module.exports = (client) => {
       const gaMessage = await message.channel.send({ embeds: [gaEmbed], components: [row] });
       if (message.deletable) message.delete().catch(() => {});
 
-      // Lưu trữ thông tin Giveaway
       client.activeGiveaways.set(gaMessage.id, {
         messageId: gaMessage.id,
         channelId: message.channel.id,
@@ -86,7 +84,7 @@ module.exports = (client) => {
         endsAt
       });
 
-      // Hẹn giờ kết thúc GA
+      // Hẹn giờ kết thúc
       setTimeout(async () => {
         const gaData = client.activeGiveaways.get(gaMessage.id);
         if (!gaData) return;
@@ -98,9 +96,8 @@ module.exports = (client) => {
         const participantsArr = Array.from(gaData.participants);
 
         if (participantsArr.length === 0) {
-          // Trường hợp không có ai tham gia
           if (msg) {
-            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, '⏳ **Trạng thái:** Tiệc đã kết thúc (Không ai tham gia)'));
+            const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, '⏳ **Còn lại:** Tiệc đã kết thúc'));
             msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
           }
           channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
@@ -108,7 +105,6 @@ module.exports = (client) => {
           return;
         }
 
-        // Random chọn người thắng
         const winners = [];
         const pool = [...participantsArr];
         for (let i = 0; i < Math.min(gaData.winnerCount, pool.length); i++) {
@@ -119,7 +115,7 @@ module.exports = (client) => {
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
         if (msg) {
-          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, `⏳ **Đã kết thúc!**\n👑 **Người thắng:** ${winnerMentions}`));
+          const endedEmbed = EmbedBuilder.from(msg.embeds[0]).setDescription(msg.embeds[0].description.replace(/⏳.*/, `⏳ **Còn lại:** Tiệc đã kết thúc`));
           msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
         }
 
@@ -129,7 +125,7 @@ module.exports = (client) => {
       }, durationMs);
     }
 
-    // 2. LỆNH KẾT THÚC SỚM: zend (Reply vào tin nhắn GA)
+    // 2. LỆNH KẾT THÚC SỚM: zend
     if (command === 'end') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền kết thúc GA!**');
       if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn thông báo Giveaway cần kết thúc!');
@@ -155,9 +151,7 @@ module.exports = (client) => {
         }
         const winnerMentions = winners.map(id => `<@${id}>`).join(', ');
 
-        const endedEmbed = EmbedBuilder.from(repliedMsg.embeds[0]).setDescription(repliedMsg.embeds[0].description.replace(/⏳.*/, `⏳ **Kết thúc sớm!**\n👑 **Người thắng:** ${winnerMentions}`));
-        repliedMsg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
-
+        repliedMsg.edit({ components: [] }).catch(() => {});
         client.activeGiveaways.delete(repliedMsg.id);
         return message.channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng ${winnerMentions} đã trở thành chủ nhân của món quà __**${gaData.prize}**__ ⊹‧₊˚`);
       } catch (err) {
@@ -165,22 +159,14 @@ module.exports = (client) => {
       }
     }
 
-    // 3. LỆNH REROLL: zgarr (Reply vào tin nhắn GA đã kết thúc)
+    // 3. LỆNH REROLL: zgarr
     if (command === 'zgarr' || command === 'reroll') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền Reroll!**');
-      if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn kết quả Giveaway để chọn người mới!');
-
-      try {
-        const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-        // Lấy lại danh sách các user từng tham gia nếu lưu vết hoặc từ reactions (ở đây ta báo ngẫu nhiên tag user ngẫu nhiên trong kênh hoặc setup mặc định)
-        return message.channel.send(`˚₊‧⊹ :emoji_11: Hương vị thay đổi, xin chúc mừng <@${message.author.id}> trở thành chủ nhân mới của món quà…⊹‧₊˚`);
-      } catch (err) {
-        return message.reply('❌ Không thể thực hiện Reroll!');
-      }
+      if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn kết quả Giveaway!');
+      return message.channel.send(`˚₊‧⊹ :emoji_11: Hương vị thay đổi, xin chúc mừng <@${message.author.id}> trở thành chủ nhân mới của món quà…⊹‧₊˚`);
     }
   });
 
-  // Xử lý sự kiện bấm nút tham gia GA
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton() || interaction.customId !== 'join_ga') return;
 
@@ -189,20 +175,19 @@ module.exports = (client) => {
       return interaction.reply({ content: '❌ Giveaway này đã kết thúc hoặc không tồn tại!', ephemeral: true });
     }
 
-    // Kiểm tra điều kiện Role nếu có
     if (gaData.roleId) {
       const member = interaction.member;
       if (!member.roles.cache.has(gaData.roleId)) {
-        return interaction.reply({ content: `❌ Bạn cần có role <@&${gaData.roleId}> mới được tham gia tiệc này!`, ephemeral: true });
+        return interaction.reply({ content: `❌ Bạn cần có role phù hợp mới được tham gia!`, ephemeral: true });
       }
     }
 
     if (gaData.participants.has(interaction.user.id)) {
       gaData.participants.delete(interaction.user.id);
-      return interaction.reply({ content: '🍷 Bạn đã rời khỏi danh sách tham gia Giveaway!', ephemeral: true });
+      return interaction.reply({ content: '🍷 Đã rời khỏi danh sách tham gia!', ephemeral: true });
     } else {
       gaData.participants.add(interaction.user.id);
-      return interaction.reply({ content: '🍷 Đã ghi danh bạn vào danh sách tham gia tiệc thành công!', ephemeral: true });
+      return interaction.reply({ content: '🍷 Đã tham gia thành công!', ephemeral: true });
     }
   });
 };
