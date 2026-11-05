@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot Discord Giveaway & Moderation đang hoạt động!'));
 app.listen(PORT, () => console.log(`Web Server running on port ${PORT}`));
 
-// --- KHỞI TẠO BOT ---
+// --- KHỞI TẠO BOT (ĐÃ BỔ SUNG ĐỦ INTENTS MODERATION) ---
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -15,7 +15,8 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildPresences
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildModeration
   ]
 });
 
@@ -139,7 +140,7 @@ function formatTimeLeft(msLeft) {
 }
 
 client.once('ready', () => {
-  console.log(`[VER 10.0 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
+  console.log(`[VER 10.1 MAIN SERVER LIVE] Đã đăng nhập: ${client.user.tag}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -615,7 +616,7 @@ client.on('messageCreate', async (message) => {
           `<:emoji_16:1567861598515896512> Bảo vật nhận được: <@&${result.id}>\n` +
           `<:emoji_17:1567861618975449218> Tiến độ tích luỹ: ${storageStatus}\n\n` +
           `      ˚₊‧꒰ა ♔ ໒꒱ ‧₊˚\n\n` +
-          `  𝑹𝒐𝒚𝒂𝒍 𝑻𝒓𝒆𝒂𝒔𝒖𝒓𝒆𝒔\n` +
+          `  𝑹𝒐𝒚𝒂𝒍 𝑻𝑹𝑬𝑨𝑺𝑼𝑹𝑬𝑺\n` +
           ` ZeitHaven • The Royal Collection\n\n` +
           `Một báu vật đã tìm thấy chủ nhân. ♡`
         )
