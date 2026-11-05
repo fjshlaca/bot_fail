@@ -1,4 +1,4 @@
-const { joinVoiceChannel } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -7,6 +7,7 @@ function isGAAdmin(member) {
 }
 
 module.exports = (client) => {
+  // Quản lý AFK 5 phút khi phòng trống
   client.on('voiceStateUpdate', (oldState, newState) => {
     const guildId = oldState.guild.id || newState.guild.id;
     const sData = client.serverVoices.get(guildId);
@@ -39,6 +40,7 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
+    // 🎤 LỆNH JOIN VOICE
     if (command === 'join' || command === 'joinv') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       let targetVoiceChannel = null;
@@ -69,11 +71,42 @@ module.exports = (client) => {
         });
 
         if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
-        client.serverVoices.set(guildId, { connection, isPermanent, channelId: targetVoiceChannel.id, masterName, afkTimer: null });
-        return message.reply('Em bé đến liền ạ');
+        client.serverVoices.set(guildId, { connection, isPermanent, channelId: targetVoiceChannel.id, masterName, afkTimer: null, player: createAudioPlayer() });
+        connection.subscribe(client.serverVoices.get(guildId).player);
+
+        return message.reply('Nô tì đến liền ạ');
       } catch (err) { message.reply('❌ Lỗi tham gia voice!'); }
     }
 
+    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE
+    if (command === 'zs') {
+      const guildId = message.guild.id;
+      const existingVoice = client.serverVoices.get(guildId);
+
+      if (!existingVoice) {
+        return message.reply('❌ Bot chưa ở trong kênh thoại nào cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
+      }
+
+      const textToSpeak = args.join(' ');
+      if (!textToSpeak) {
+        return message.reply('❌ Vui lòng nhập nội dung cần bot nói! Ví dụ: `zs ăn cứt`');
+      }
+
+      try {
+        // Sử dụng Google TTS API để dịch text thành link âm thanh tiếng Việt (vi)
+        const encodedText = encodeURIComponent(textToSpeak);
+        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
+
+        const resource = createAudioResource(ttsUrl);
+        existingVoice.player.play(resource);
+
+        return message.react('🗣️').catch(() => {});
+      } catch (err) {
+        return message.reply('❌ Không thể phát âm thanh lúc này!');
+      }
+    }
+
+    // 👋 LỆNH OUT VOICE
     if (command === 'out') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       const guildId = message.guild.id;
@@ -82,7 +115,7 @@ module.exports = (client) => {
       existingVoice.connection.destroy();
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
-      return message.reply('Em bé đi đây ạ!');
+      return message.reply('Nô tì lui đây ạ!');
     }
   });
 };
