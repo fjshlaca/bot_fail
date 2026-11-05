@@ -1,5 +1,5 @@
 const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
-const https = require('https');
+const googleTTS = require('google-tts-api');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -91,72 +91,42 @@ module.exports = (client) => {
       }
     }
 
-    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE
+    // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE BẰNG GOOGLE TTS
     if (command === 'zs') {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
 
       if (!existingVoice) {
-        return message.reply('❌ Bot chưa ở trong kênh thoại cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
+        return message.reply('❌ Bot chưa ở trong kênh thoại nào cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
       }
 
       const textToSpeak = args.join(' ');
       if (!textToSpeak) {
-        return message.reply('❌ **Vui lòng nhập nội dung cần bot nói!** Ví dụ: `zs ăn cứt`');
+        return message.reply('❌ **Vui lòng nhập nội dung cần bot nói!** Ví dụ: `zs chao xìn`');
+      }
+
+      if (textToSpeak.length > 200) {
+        return message.reply('❌ **Nội dung quá dài!** Vui lòng nhập dưới 200 ký tự để bot không bị hụt hơi.');
       }
 
       try {
-        const postData = JSON.stringify({
-          voice: 'Vietnamese Female',
-          text: textToSpeak
+        // Lấy link âm thanh trực tiếp từ Google Translate siêu mượt
+        const audioUrl = googleTTS.getAudioUrl(textToSpeak, {
+          lang: 'vi',
+          slow: false,
+          host: 'https://translate.google.com',
         });
 
-        const options = {
-          hostname: 'metastream.herokuapp.com',
-          port: 443,
-          path: '/get_tts',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': postData.length
-          }
-        };
-
-        const req = https.request(options, (res) => {
-          let data = '';
-          res.on('data', (chunk) => { data += chunk; });
-          res.on('end', () => {
-            try {
-              const json = JSON.parse(data);
-              if (json && json.speak_url) {
-                https.get(json.speak_url, (audioRes) => {
-                  // Thêm cấu hình xử lý luồng stream để bot phát âm thanh mượt mà
-                  const resource = createAudioResource(audioRes, { 
-                    inlineVolume: true 
-                  });
-                  resource.volume.setVolume(2.5); // Tăng âm lượng to rõ
-
-                  existingVoice.player.play(resource);
-                  return message.react('🗣️').catch(() => {});
-                });
-              } else {
-                return message.reply('❌ Không thể tạo giọng đọc cho nội dung này!');
-              }
-            } catch (e) {
-              return message.reply('❌ Lỗi giải mã phản hồi âm thanh!');
-            }
-          });
+        const resource = createAudioResource(audioUrl, { 
+          inlineVolume: true 
         });
+        resource.volume.setVolume(2.5); // Khuếch đại âm lượng to rõ
 
-        req.on('error', () => {
-          return message.reply('❌ Không thể kết nối tới dịch vụ TTS!');
-        });
-
-        req.write(postData);
-        req.end();
+        existingVoice.player.play(resource);
+        return message.react('🗣️').catch(() => {});
 
       } catch (err) {
-        return message.reply('❌ Đã xảy ra lỗi khi phát âm thanh!');
+        return message.reply('❌ Đã xảy ra lỗi khi tạo giọng đọc!');
       }
     }
 
