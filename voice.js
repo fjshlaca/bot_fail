@@ -1,4 +1,4 @@
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType } = require('@discordjs/voice');
 const config = require('./config');
 
 function isGAAdmin(member) {
@@ -71,11 +71,23 @@ module.exports = (client) => {
         });
 
         if (existingVoice && existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
-        client.serverVoices.set(guildId, { connection, isPermanent, channelId: targetVoiceChannel.id, masterName, afkTimer: null, player: createAudioPlayer() });
-        connection.subscribe(client.serverVoices.get(guildId).player);
+        
+        const player = createAudioPlayer();
+        connection.subscribe(player);
+
+        client.serverVoices.set(guildId, { 
+          connection, 
+          isPermanent, 
+          channelId: targetVoiceChannel.id, 
+          masterName, 
+          afkTimer: null, 
+          player 
+        });
 
         return message.reply('Nô tì đến liền ạ');
-      } catch (err) { message.reply('❌ Lỗi tham gia voice!'); }
+      } catch (err) {
+        return message.reply('❌ Lỗi tham gia voice!');
+      }
     }
 
     // 🔊 LỆNH zs <nội_dung> — BOT NÓI TO TRONG VOICE
@@ -84,7 +96,7 @@ module.exports = (client) => {
       const existingVoice = client.serverVoices.get(guildId);
 
       if (!existingVoice) {
-        return message.reply('❌ Bot chưa ở trong kênh thoại nào cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
+        return message.reply('❌ Bot chưa ở trong kênh thoại cả! Hãy dùng lệnh `zjoin` hoặc `zjoinv` gọi bot vào trước nhé.');
       }
 
       const textToSpeak = args.join(' ');
@@ -93,13 +105,16 @@ module.exports = (client) => {
       }
 
       try {
-        // Sử dụng Google TTS API để dịch text thành link âm thanh tiếng Việt (vi)
         const encodedText = encodeURIComponent(textToSpeak);
+        // Sử dụng Google TTS endpoint chuẩn
         const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodedText}&tl=vi&client=tw-ob`;
 
-        const resource = createAudioResource(ttsUrl);
-        existingVoice.player.play(resource);
+        const resource = createAudioResource(ttsUrl, {
+          inlineVolume: true
+        });
+        resource.volume.setVolume(1.5); // Tăng âm lượng to rõ
 
+        existingVoice.player.play(resource);
         return message.react('🗣️').catch(() => {});
       } catch (err) {
         return message.reply('❌ Không thể phát âm thanh lúc này!');
@@ -112,9 +127,11 @@ module.exports = (client) => {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
       if (!existingVoice) return message.reply('❌ Mình đang rảnh, có ở trong voice nào đâu!');
+      
       existingVoice.connection.destroy();
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
+      
       return message.reply('Nô tì lui đây ạ!');
     }
   });
