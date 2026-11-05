@@ -26,11 +26,11 @@ module.exports = (client) => {
         .setCustomId('help_menu')
         .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
         .addOptions([
-          { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+          { label: ' Mod ', description: 'Quản trị, kiểm duyệt, lối tắt role, check profile, claim ga...', value: 'mod' },
           { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
           { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
           { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' },
-          { label: ' Thống Kê ', description: 'Xem biến động thành viên 3, 7, 30 ngày...', value: 'stats' }
+          { label: ' Thống Kê ', description: 'Xem biến động thành viên 1, 3, 7, 30 ngày...', value: 'stats' }
         ]);
 
       const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -59,11 +59,11 @@ module.exports = (client) => {
       .setCustomId('help_menu')
       .setPlaceholder('📂 Chọn một danh mục để xem lệnh...')
       .addOptions([
-        { label: ' Mod ', description: 'Các lệnh clear, mute, ban, phạt tù...', value: 'mod' },
+        { label: ' Mod ', description: 'Quản trị, kiểm duyệt, lối tắt role, check profile, claim ga...', value: 'mod' },
         { label: ' Giveaway ', description: 'Các lệnh tạo ga, kết thúc, reroll...', value: 'ga' },
         { label: ' Gacha ', description: 'Lệnh mở rương báu nhận royal role...', value: 'gacha' },
         { label: ' Bot Voice ', description: 'Lệnh join, joinv, out voice...', value: 'voice' },
-        { label: ' Thống Kê ', description: 'Xem biến động thành viên 3, 7, 30 ngày...', value: 'stats' }
+        { label: ' Thống Kê ', description: 'Xem biến động thành viên 1, 3, 7, 30 ngày...', value: 'stats' }
       ]);
     const homeRow = new ActionRowBuilder().addComponents(homeMenu);
 
@@ -72,7 +72,19 @@ module.exports = (client) => {
       let detailEmbed = new EmbedBuilder().setColor(0xC7A9C9);
 
       if (selected === 'mod') {
-        detailEmbed.setTitle(' Mod ').setDescription('`zclear <1-100>` — Xóa nhanh tin nhắn\n`zmute <tg> [lý_do]` — Cấm ngôn\n`zunmute` — Gỡ cấm ngôn\n`zban` — Ban thành viên\n`ztu <số_lần>` — Phạt tù\n`ztron` — Vượt ngục\n`zancut` — Ăn cút sám hối');
+        detailEmbed.setTitle(' Mod ').setDescription(
+          '`zclear <1-100>` — Xóa nhanh tin nhắn\n' +
+          '`zmute <tg> [lý_do]` — Cấm ngôn\n' +
+          '`zunmute` — Gỡ cấm ngôn\n' +
+          '`zban` — Ban thành viên\n' +
+          '`ztu <số_lần>` — Phạt tù\n' +
+          '`ztron` — Vượt ngục\n' +
+          '`zancut` — Ăn cút sám hối\n' +
+          '`zluu <@&role> <từ_khóa>` — Lưu lối tắt role\n' +
+          '`zadd <@user> <từ_khóa>` — Cấp role bằng lối tắt nhanh\n' +
+          '`zavt` — Xem Avatar & Banner tương tác\n' +
+          '`zclaim <@user>` — Thống kê giải GA từ các bot'
+        );
       } else if (selected === 'ga') {
         detailEmbed.setTitle(' Giveaway ').setDescription('`zga [@Role] <số> <tg> <quà>` — Tạo GA\n`zend` — Kết thúc GA sớm\n`zgarr` — Reroll người trúng');
       } else if (selected === 'gacha') {
@@ -80,7 +92,7 @@ module.exports = (client) => {
       } else if (selected === 'voice') {
         detailEmbed.setTitle(' Bot Voice ').setDescription('`zjoin` — Gọi bot vào voice (5p tự out)\n`zjoinv` — Cắm chốt vĩnh viễn\n`zout` — Đuổi bot ra');
       } else if (selected === 'stats') {
-        detailEmbed.setTitle(' Thống Kê ').setDescription('`zstats 3` — Xem biến động mem trong 3 ngày\n`zstats 7` — Xem biến động mem trong 7 ngày\n`zstats 30` — Xem biến động mem trong 30 ngày');
+        detailEmbed.setTitle(' Thống Kê ').setDescription('`zstats` — Xem biến động mem hôm nay\n`zstats 3` — Xem biến động mem trong 3 ngày\n`zstats 7` — Xem biến động mem trong 7 ngày\n`zstats 30` — Xem biến động mem trong 30 ngày');
       }
 
       const backButton = new ButtonBuilder().setCustomId('help_home').setLabel('Quay về').setStyle(ButtonStyle.Secondary);
