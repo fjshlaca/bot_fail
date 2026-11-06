@@ -96,10 +96,10 @@ module.exports = (client) => {
           afkTimer: null
         });
 
-        return message.reply(`✅ Nô tì đã vào phòng. Chế độ: **${isPermanent ? 'zjoinv (Bám rễ 24/7 không bao giờ rụng)' : 'zjoin (Out sau 5p AFK)'}**`);
+        return message.reply(`Em bé đến đây ạa. Chế độ: **${isPermanent ? 'zjoinv ' : 'zjoin '}**`);
       } catch (err) {
         console.error("Lỗi join voice:", err);
-        return message.reply('❌ Lỗi kết nối vào voice!');
+        return message.reply('❌ Lỗi, em bé hong vào rum đượcc ');
       }
     }
 
@@ -109,13 +109,13 @@ module.exports = (client) => {
       const guildId = message.guild.id;
       const existingVoice = client.serverVoices.get(guildId);
       
-      if (!existingVoice) return message.reply('❌ Mình đang rảnh, không ở trong voice nào cả!');
+      if (!existingVoice) return message.reply('❌ Em bé đang rảnh, không ở trong voice nào cả!');
       
       existingVoice.connection.destroy(); // Hủy triệt để connection
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
       
-      return message.reply('Nô tì lui đây ạ!');
+      return message.reply('Em bé đi đây ạ!');
     }
   });
 };
