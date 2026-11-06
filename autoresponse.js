@@ -5,9 +5,13 @@ const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
 
+// Lõi quyền lực God Mode (2 ID Admin + 3 Role)
 function isGAAdmin(member) {
   if (!member) return false;
-  return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  return false;
 }
 
 module.exports = (client) => {
@@ -35,7 +39,7 @@ module.exports = (client) => {
       
       const contentAfterCmd = message.content.slice(config.PREFIX.length + command.length).trim();
 
-      // =============== LỆNH THÊM: zres <từ_khóa> _ <phản_hồi> (Hỗ trợ đính kèm ảnh) ===============
+      // =============== LỆNH THÊM: zres (Chỉ Admin/Role) ===============
       if (command === 'res') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
@@ -53,11 +57,9 @@ module.exports = (client) => {
            return message.reply('❌ Từ khóa không được để trống!');
         }
 
-        // Bắt lấy link ảnh nếu người dùng có đính kèm file ảnh vào tin nhắn gõ lệnh
         let imageUrl = null;
         if (message.attachments.size > 0) {
           const attachment = message.attachments.first();
-          // Kiểm tra xem có phải định dạng ảnh không
           if (attachment.contentType && attachment.contentType.startsWith('image')) {
             imageUrl = attachment.url;
           }
@@ -67,7 +69,6 @@ module.exports = (client) => {
            return message.reply('❌ Phải có ít nhất nội dung chữ hoặc một bức ảnh đính kèm để làm phản hồi!');
         }
 
-        // Lưu vào database dưới dạng object gồm text và imageUrl
         autoResponses[trigger] = {
           text: responseText || '',
           image: imageUrl || null
@@ -77,7 +78,7 @@ module.exports = (client) => {
         return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** ${imageUrl ? '(Có đính kèm ảnh)' : ''}`);
       }
 
-      // LỆNH XÓA: zdelres <từ_khóa>
+      // LỆNH XÓA: zdelres (Chỉ Admin/Role)
       if (command === 'delres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xóa Auto Response!');
@@ -95,8 +96,11 @@ module.exports = (client) => {
         }
       }
 
-      // LỆNH DANH SÁCH: zlistres
+      // LỆNH DANH SÁCH: zlistres (Chỉ Admin/Role)
       if (command === 'listres') {
+        if (!isGAAdmin(message.member)) {
+          return message.reply('❌ Bạn không có quyền xem danh sách Auto Response!');
+        }
         const triggers = Object.keys(autoResponses);
         if (triggers.length === 0) {
           return message.reply('📭 Hiện tại chưa có từ khóa Auto Response nào được thiết lập.');
@@ -110,7 +114,6 @@ module.exports = (client) => {
         let description = '';
         triggers.forEach((trg, index) => {
           let item = autoResponses[trg];
-          // Tương thích ngược với dữ liệu cũ dạng string
           let text = typeof item === 'object' ? item.text : item;
           let hasImg = typeof item === 'object' && item.image ? ' 🖼️ [Có ảnh]' : '';
           
@@ -123,7 +126,7 @@ module.exports = (client) => {
       }
     }
 
-    // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (HỖ TRỢ CẢ TEXT VÀ ẢNH) ===============
+    // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (AI CŨNG DÙNG ĐƯỢC) ===============
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
       const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
       
@@ -134,7 +137,6 @@ module.exports = (client) => {
         if (regex.test(message.content)) {
           const resData = autoResponses[trigger];
           
-          // Xử lý dữ liệu tương thích (nếu là dạng object mới hoặc string cũ)
           let contentToSend = {};
           let textContent = typeof resData === 'object' ? resData.text : resData;
           let imgContent = typeof resData === 'object' ? resData.image : null;
