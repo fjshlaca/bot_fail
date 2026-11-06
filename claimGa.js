@@ -1,11 +1,11 @@
 const { EmbedBuilder } = require('discord.js');
 const config = require('./config');
 
-// Kiểm tra quyền riêng cho zclaim: 3 role ban đầu HOẶC role ngoại lệ 1537784742022484108
 function canUseClaim(member) {
   if (!member) return false;
-  if (member.id === config.BOT_ADMIN_ID) return true;
-  if (member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
   if (member.roles.cache.has('1537784742022484108')) return true;
   return false;
 }
