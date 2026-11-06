@@ -141,10 +141,10 @@ module.exports = (client) => {
     }
 
     // =============== CƠ CHẾ AUTO REP: KHỚP CHÍNH XÁC TUYỆT ĐỐI (EXACT MATCH 100%) ===============
-    if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
+    else {
       const userMsg = message.content.trim().toLowerCase();
       
-      // CHỈ PHẢN HỒI KHI TIN NHẮN TRÙNG KHỚP 100% (Không thừa không thiếu một ký tự)
+      // CHỈ PHẢN HỒI KHI TOÀN BỘ NỘI DUNG TIN NHẮN TRÙNG KHỚP 100% VỚI TRIGGER
       if (autoResponses[userMsg]) {
         const resData = autoResponses[userMsg];
         
