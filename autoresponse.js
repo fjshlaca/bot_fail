@@ -32,10 +32,8 @@ module.exports = (client) => {
   }
 
   client.on('messageCreate', async (message) => {
-    // Bỏ qua bot, tin nhắn ngoài server, hoặc không có member
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // Khóa chống lặp tiến trình tin nhắn trong vòng 2 giây
     if (processedMessages.has(message.id)) return;
     processedMessages.add(message.id);
     setTimeout(() => processedMessages.delete(message.id), 2000);
@@ -48,13 +46,12 @@ module.exports = (client) => {
 
     const messageContent = message.content.trim();
 
-    // =============== XỬ LÝ CÁC LỆNH (ZRES, ZDELRES, ZLISTRES) ===============
+    // XỬ LÝ LỆNH PREFIX
     if (messageContent.toLowerCase().startsWith(config.PREFIX)) {
       const args = messageContent.slice(config.PREFIX.length).trim().split(/ +/);
       const command = args.shift().toLowerCase();
       const contentAfterCmd = messageContent.slice(config.PREFIX.length + command.length).trim();
 
-      // LỆNH: zres
       if (command === 'res') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
@@ -90,10 +87,10 @@ module.exports = (client) => {
         };
         saveDB(); 
         
+        // CHỈ GỬI 1 DÒNG THÔNG BÁO DUY NHẤT NÀY
         return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** tại server này!`);
       }
 
-      // LỆNH: zdelres
       if (command === 'delres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xóa Auto Response!');
@@ -111,7 +108,6 @@ module.exports = (client) => {
         }
       }
 
-      // LỆNH: zlistres
       if (command === 'listres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xem danh sách Auto Response!');
@@ -140,13 +136,12 @@ module.exports = (client) => {
         return message.reply({ embeds: [listEmbed] });
       }
 
-      return; // Dừng lại không chạy xuống phần chat tự động bên dưới nếu là lệnh
+      return;
     }
 
-    // =============== CƠ CHẾ AUTO REP: EXACT MATCH 100% TUYỆT ĐỐI ===============
+    // EXACT MATCH 100% (Khớp tuyệt đối toàn bộ nội dung tin nhắn)
     const userMsg = messageContent.toLowerCase();
 
-    // Chỉ kích hoạt khi nội dung tin nhắn chat trùng khớp 100% với trigger
     if (autoResponses[userMsg]) {
       const resData = autoResponses[userMsg];
       
