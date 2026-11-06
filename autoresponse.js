@@ -5,9 +5,6 @@ const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
 
-// Biến cờ khóa chống chạy lặp x2 do bị require nhiều lần
-let isInitialized = false;
-
 function isGAAdmin(member) {
   if (!member) return false;
   const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
@@ -16,10 +13,10 @@ function isGAAdmin(member) {
   return false;
 }
 
-module.exports = (client) => {
-  if (isInitialized) return; // Nếu đã khởi động rồi thì chặn luôn, không cho đăng ký sự kiện lần 2
-  isInitialized = true;
+// Bộ nhớ đệm chống trùng lặp tin nhắn trong vòng 2 giây
+const processedMessages = new Set();
 
+module.exports = (client) => {
   let autoResponses = {};
   if (fs.existsSync(dbPath)) {
     try {
@@ -37,6 +34,11 @@ module.exports = (client) => {
 
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
+
+    // CHỐNG TRÙNG LẶP TOÀN CỤC: Nếu ID tin nhắn này vừa được xử lý cách đây chưa tới 2 giây -> Bỏ qua lập tức
+    if (processedMessages.has(message.id)) return;
+    processedMessages.add(message.id);
+    setTimeout(() => processedMessages.delete(message.id), 2000);
 
     if (message.content.toLowerCase().startsWith(config.PREFIX)) {
       const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
