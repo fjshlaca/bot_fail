@@ -1,6 +1,14 @@
 const config = require('./config');
 const { EmbedBuilder } = require('discord.js');
 
+function isGAAdmin(member) {
+  if (!member) return false;
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  return false;
+}
+
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.content.toLowerCase().startsWith(config.PREFIX)) return;
@@ -10,8 +18,8 @@ module.exports = (client) => {
 
     // =============== LỆNH ÉP KẾT THÚC (zfend) ===============
     if (command === 'fend') {
-      if (!message.member.permissions.has('Administrator')) {
-          return message.reply('❌ Bạn không có quyền Administrator để end GA!');
+      if (!isGAAdmin(message.member)) {
+          return message.reply('❌ Bạn không có quyền để end GA!');
       }
 
       let msgId = args[0];
@@ -29,7 +37,6 @@ module.exports = (client) => {
         let prizeName = "phần quà bí mật";
         let winnerCount = 1;
 
-        // 1. SỬA EMBED VÀ LẤY LẠI THÔNG TIN PHẦN QUÀ
         if (gaMessage.embeds.length > 0) {
           const oldEmbed = gaMessage.embeds[0];
           const newEmbed = EmbedBuilder.from(oldEmbed);
@@ -45,7 +52,6 @@ module.exports = (client) => {
           await gaMessage.edit({ embeds: [newEmbed] });
         }
 
-        // 2. LẤY TẤT CẢ NGƯỜI THAM GIA
         let participants = [];
         for (const [key, reaction] of gaMessage.reactions.cache) {
           const users = await reaction.users.fetch().catch(() => null);
@@ -78,8 +84,8 @@ module.exports = (client) => {
 
     // =============== LỆNH ÉP REROLL (zreroll hoặc zgarr) ===============
     if (command === 'reroll' || command === 'garr') {
-      if (!message.member.permissions.has('Administrator')) {
-          return message.reply('❌ Bạn không có quyền Administrator để reroll!');
+      if (!isGAAdmin(message.member)) {
+          return message.reply('❌ Bạn không có quyền để reroll!');
       }
 
       let msgId = args[0];
@@ -112,7 +118,7 @@ module.exports = (client) => {
         await message.channel.send(`˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng <@$ {winnerId}> trở thành chủ nhân mới của món quà…⊹‧₊˚`.replace(/\$ /, ''));
         return message.react('✅').catch(()=>{});
         
-      } catch (err) { // Đã fix chuẩn cú pháp catch ở đây
+      } catch (err) {
         console.error("Lỗi reroll:", err);
         return message.reply('❌ Lỗi Reroll!');
       }
