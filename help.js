@@ -3,7 +3,8 @@ const config = require('./config');
 
 function isMainAdmin(member) {
   if (!member) return false;
-  if (member.id === config.BOT_ADMIN_ID) return true;
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
   return member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
 }
 
@@ -15,7 +16,6 @@ module.exports = (client) => {
     const command = args.shift().toLowerCase();
 
     if (command === 'help') {
-      // Lệnh zhelp yêu cầu phải là 3 role quản trị mới được dùng
       if (!isMainAdmin(message.member)) {
         return message.reply('❌ **Bạn không có quyền sử dụng bảng trợ giúp này!**');
       }
