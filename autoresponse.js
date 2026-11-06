@@ -32,9 +32,10 @@ module.exports = (client) => {
   }
 
   client.on('messageCreate', async (message) => {
+    // Bỏ qua bot, tin nhắn ngoài server, hoặc không có member
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // Chống lặp tiến trình tin nhắn trong 2 giây
+    // Khóa chống lặp tiến trình tin nhắn trong vòng 2 giây
     if (processedMessages.has(message.id)) return;
     processedMessages.add(message.id);
     setTimeout(() => processedMessages.delete(message.id), 2000);
@@ -47,7 +48,7 @@ module.exports = (client) => {
 
     const messageContent = message.content.trim();
 
-    // =============== XỬ LÝ CÁC LỆNH (PREFIX) ===============
+    // =============== XỬ LÝ CÁC LỆNH (ZRES, ZDELRES, ZLISTRES) ===============
     if (messageContent.toLowerCase().startsWith(config.PREFIX)) {
       const args = messageContent.slice(config.PREFIX.length).trim().split(/ +/);
       const command = args.shift().toLowerCase();
@@ -139,13 +140,13 @@ module.exports = (client) => {
         return message.reply({ embeds: [listEmbed] });
       }
 
-      return; // Dừng lại nếu là lệnh, không chạy xuống phần auto-rep bên dưới
+      return; // Dừng lại không chạy xuống phần chat tự động bên dưới nếu là lệnh
     }
 
-    // =============== CƠ CHẾ AUTO REP: EXACT MATCH 100% ===============
+    // =============== CƠ CHẾ AUTO REP: EXACT MATCH 100% TUYỆT ĐỐI ===============
     const userMsg = messageContent.toLowerCase();
 
-    // Kiểm tra xem trong cơ sở dữ liệu có từ khóa khớp tuyệt đối 100% không
+    // Chỉ kích hoạt khi nội dung tin nhắn chat trùng khớp 100% với trigger
     if (autoResponses[userMsg]) {
       const resData = autoResponses[userMsg];
       
