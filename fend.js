@@ -1,5 +1,5 @@
 const config = require('./config');
-const { EmbedBuilder } = require('discord.js'); // Thêm thư viện xử lý Embed
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = (client) => {
   client.on('messageCreate', async (message) => {
@@ -10,11 +10,16 @@ module.exports = (client) => {
 
     if (command === 'fend') {
       if (!message.member.permissions.has('Administrator')) {
-          return message.reply('❌ Bạn không có quyền Administrator để ép end GA!');
+          return message.reply('❌ Bạn không có quyền để end GA!');
       }
 
-      const msgId = args[0];
-      if (!msgId) return message.reply('❌ Nhập ID tin nhắn GA bị kẹt vào đây!');
+      // Ưu tiên lấy ID từ tin nhắn được Reply, nếu không thì lấy từ nội dung gõ theo sau
+      let msgId = args[0];
+      if (message.reference && message.reference.messageId) {
+        msgId = message.reference.messageId;
+      }
+
+      if (!msgId) return message.reply('❌ Hãy **Reply ** tin nhắn GA và gõ lệnh, hoặc nhập ID tin nhắn!');
 
       try {
         const gaMessage = await message.channel.messages.fetch(msgId);
@@ -25,7 +30,7 @@ module.exports = (client) => {
           const oldEmbed = gaMessage.embeds[0];
           const newEmbed = EmbedBuilder.from(oldEmbed);
 
-          // Tìm và thay thế dòng "Còn lại: ..." thành Đã kết thúc
+          // Đổi dòng thời gian thành Đã kết thúc
           if (newEmbed.data.description) {
             let newDesc = newEmbed.data.description
               .replace(/Còn lại:.*$/m, 'Trạng thái: **Đã kết thúc 🎉**')
@@ -34,20 +39,19 @@ module.exports = (client) => {
             newEmbed.setDescription(newDesc);
           }
           
-          // Cập nhật tin nhắn
           await gaMessage.edit({ embeds: [newEmbed] });
         }
 
         // 2. BỐC THĂM NGƯỜI TRÚNG THƯỞNG
         const reaction = gaMessage.reactions.cache.first();
-        if (!reaction) return message.reply('✅ Đã sửa Embed thành Đã kết thúc (Không có ai tham gia để bốc giải).');
+        if (!reaction) return message.reply(' Đã sửa Embed thành Đã kết thúc .');
 
         const users = await reaction.users.fetch();
         const validUsers = users.filter(u => !u.bot);
         
         if (validUsers.size > 0) {
           const winner = validUsers.random();
-          await message.channel.send(`🎉 Chúc mừng ${winner} đã trúng giải từ GA! (Đã ép kết thúc)`);
+          await message.channel.send(`˚₊‧⊹ <:emoji_13:1567468392544337972> Rượu vang được nâng lên, xin chúc mừng @ đã trở thành chủ nhân của món quà …. ⊹‧₊˚`);
         } else {
           await message.channel.send('GA này không có người chơi hợp lệ nào tham gia!');
         }
@@ -56,7 +60,7 @@ module.exports = (client) => {
 
       } catch (err) {
         console.error("Lỗi khi ép end GA:", err);
-        return message.reply('❌ Lỗi! Chắc ông lấy sai ID hoặc khác kênh.');
+        return message.reply('❌ Lỗi! .');
       }
     }
   });
