@@ -33,6 +33,7 @@ require('./moderation')(client);
 require('./giveaway')(client);
 require('./gacha')(client);
 require('./voice')(client);
+require('./fend')(client);
 require('./stats')(client);
 require('./addrole')(client);
 require('./profile')(client);
