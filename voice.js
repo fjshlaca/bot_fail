@@ -115,7 +115,7 @@ module.exports = (client) => {
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
       
-      return message.reply('Em bé đi đây ạ!');
+      return message.reply('Em bé đi đây ạ :c');
     }
   });
 };
