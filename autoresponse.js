@@ -127,6 +127,7 @@ module.exports = (client) => {
     }
 
     // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (AI CŨNG DÙNG ĐƯỢC) ===============
+    // Đã thêm điều kiện loại trừ tiền tố lệnh (z) để tránh tự trigger lặp tin nhắn
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
       const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
       
