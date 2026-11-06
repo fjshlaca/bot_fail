@@ -18,13 +18,12 @@ module.exports = (client) => {
       if (message.reference && message.reference.messageId) {
         msgId = message.reference.messageId;
       }
-      if (!msgId) return message.reply('❌ Hãy **Reply ** tin nhắn GA và gõ lệnh, hoặc nhập ID tin nhắn!');
+      if (!msgId) return message.reply('❌ Hãy **Reply** tin nhắn GA bị kẹt và gõ lệnh, hoặc nhập ID tin nhắn!');
 
       try {
         const gaMessage = await message.channel.messages.fetch(msgId).catch(() => null);
         if (!gaMessage) return message.reply('❌ Không tìm thấy tin nhắn này trong kênh!');
 
-        // Ép fetch lại tin nhắn từ API Discord để load chính xác cache reaction và embed
         await gaMessage.fetch();
 
         let prizeName = "phần quà bí mật";
@@ -46,7 +45,7 @@ module.exports = (client) => {
           await gaMessage.edit({ embeds: [newEmbed] });
         }
 
-        // 2. LẤY TẤT CẢ NGƯỜI THAM GIA TỪ MỌI REACTION (Tránh lỗi kẹt cache)
+        // 2. LẤY TẤT CẢ NGƯỜI THAM GIA
         let participants = [];
         for (const [key, reaction] of gaMessage.reactions.cache) {
           const users = await reaction.users.fetch().catch(() => null);
@@ -60,7 +59,6 @@ module.exports = (client) => {
           return message.channel.send('˚₊‧⊹ <:emoji_13:1567468392544337972> Dạ tiệc kết thúc, món quà vẫn còn nằm lại trên bàn tiệc…. ⊹‧₊˚');
         }
 
-        // Bốc ngẫu nhiên người trúng giải
         const winners = [];
         const pool = [...participants];
         for (let i = 0; i < Math.min(winnerCount, pool.length); i++) {
@@ -74,7 +72,7 @@ module.exports = (client) => {
 
       } catch (err) {
         console.error("Lỗi zfend:", err);
-        return message.reply('❌ Lỗi ! Tin nhắn có thể đã bị xóa.');
+        return message.reply('❌ Lỗi! Tin nhắn có thể đã bị xóa.');
       }
     }
 
@@ -88,7 +86,7 @@ module.exports = (client) => {
       if (message.reference && message.reference.messageId) {
         msgId = message.reference.messageId;
       }
-      if (!msgId) return message.reply('❌ Hãy **Reply** vào tin nhắn GA để bốc lại!');
+      if (!msgId) return message.reply('❌ **Reply** vào tin nhắn GA bị kẹt để bốc lại!');
 
       try {
         const gaMessage = await message.channel.messages.fetch(msgId).catch(() => null);
@@ -105,16 +103,16 @@ module.exports = (client) => {
         }
 
         if (participants.length === 0) {
-          return message.reply('❌ Không có người chơi hợp lệ nào để reroll.');
+          return message.reply('❌ Không có ngươi nào hợp lệ nào để reroll.');
         }
 
         const randomIndex = Math.floor(Math.random() * participants.length);
         const winnerId = participants[randomIndex];
 
-        await message.channel.send(`˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng <@${winnerId}> trở thành chủ nhân mới của món quà…⊹‧₊˚`);
+        await message.channel.send(`˚₊‧⊹ <:emoji_11:1567468310419742810> Hương vị thay đổi, xin chúc mừng <@$ {winnerId}> trở thành chủ nhân mới của món quà…⊹‧₊˚`.replace(/\$ /, ''));
         return message.react('✅').catch(()=>{});
         
-      } cmdCatch = (err) => {
+      } catch (err) { // Đã fix chuẩn cú pháp catch ở đây
         console.error("Lỗi reroll:", err);
         return message.reply('❌ Lỗi Reroll!');
       }
