@@ -8,7 +8,10 @@ const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
-  return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  return false;
 }
 
 module.exports = (client) => {
@@ -21,10 +24,8 @@ module.exports = (client) => {
     const channel = guild.channels.cache.get(sData.channelId);
     if (!channel) return;
 
-    // Đếm số người thật (không tính bot)
     const humanMembers = channel.members.filter(m => !m.user.bot).size;
 
-    // Nếu không còn ai và KHÔNG PHẢI chế độ bám rễ (zjoinv) -> đếm ngược 5p out
     if (humanMembers === 0 && !sData.isPermanent) {
       if (!sData.afkTimer) {
         sData.afkTimer = setTimeout(() => {
@@ -33,7 +34,6 @@ module.exports = (client) => {
         }, 5 * 60 * 1000);
       }
     } else {
-      // Có người vào lại thì hủy đếm ngược
       if (sData.afkTimer) {
         clearTimeout(sData.afkTimer);
         sData.afkTimer = null;
@@ -46,7 +46,7 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // LỆNH JOIN VÀ JOINV (Tham gia phòng)
+    // LỆNH JOIN
     if (command === 'join' || command === 'joinv') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       
@@ -67,11 +67,10 @@ module.exports = (client) => {
           channelId: targetVoiceChannel.id,
           guildId: guildId,
           adapterCreator: message.guild.voiceAdapterCreator,
-          selfDeaf: true, // BẬT DEAFEN TỰ ĐỘNG ĐỂ CHỐNG DISCORD KICK BOT IDLE
+          selfDeaf: true, 
           selfMute: false
         });
 
-        // Bắt sự kiện rớt mạng và ép nó tự động Rejoin ngay lập tức
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
           try {
             await Promise.race([
@@ -80,7 +79,6 @@ module.exports = (client) => {
             ]);
           } catch (error) {
             const voiceData = client.serverVoices.get(guildId);
-            // Nếu bot vẫn còn trong dữ liệu (chưa bị zout chủ động) thì tự chui lại vào phòng
             if (voiceData && voiceData.connection && voiceData.connection.state.status !== 'destroyed') {
               console.log(`[VOICE] Rớt kết nối, đang tự động rejoin...`);
               voiceData.connection.rejoin(); 
@@ -103,7 +101,7 @@ module.exports = (client) => {
       }
     }
 
-    // LỆNH OUT (Đá bot ra)
+    // LỆNH OUT
     if (command === 'out') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       const guildId = message.guild.id;
@@ -111,7 +109,7 @@ module.exports = (client) => {
       
       if (!existingVoice) return message.reply('❌ Em bé đang rảnh, không ở trong voice nào cả!');
       
-      existingVoice.connection.destroy(); // Hủy triệt để connection
+      existingVoice.connection.destroy();
       if (existingVoice.afkTimer) clearTimeout(existingVoice.afkTimer);
       client.serverVoices.delete(guildId);
       
