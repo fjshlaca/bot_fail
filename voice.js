@@ -96,7 +96,7 @@ module.exports = (client) => {
           afkTimer: null
         });
 
-        return message.reply(`Em bé đến đây ạa. Chế độ: **${isPermanent ? 'zjoinv ' : 'zjoin '}**`);
+        return message.reply(`Em bé đến đây ạa >.< `);
       } catch (err) {
         console.error("Lỗi join voice:", err);
         return message.reply('❌ Lỗi, em bé hong vào rum đượcc ');
