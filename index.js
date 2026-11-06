@@ -23,6 +23,9 @@ const client = new Client({
   ]
 });
 
+// Tăng giới hạn listener để xử lý việc nhiều module cùng bind sự kiện (tránh cảnh báo memory leak)
+client.setMaxListeners(25);
+
 client.jailData = new Map();
 client.activeGiveaways = new Map();
 client.serverVoices = new Map();
