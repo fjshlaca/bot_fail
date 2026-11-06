@@ -39,6 +39,7 @@ require('./addrole')(client);
 require('./profile')(client);
 require('./claimGa')(client);
 require('./help')(client);
+require('./autoresponse')(client);
 
 client.once('ready', () => {
   console.log(`[BOT READY] Đã đăng nhập với tên: ${client.user.tag}`);
