@@ -5,7 +5,7 @@ const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
 
-// Bộ nhớ đệm chống trùng lặp tin nhắn toàn cục (chặn x2 tiến trình)
+// Khóa chống trùng lặp tiến trình toàn cục
 const processedMessages = new Set();
 
 function isGAAdmin(member) {
@@ -36,7 +36,7 @@ module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // Chống trùng lặp tiến trình trong 2 giây
+    // Chống lặp tiến trình trong 2 giây
     if (processedMessages.has(message.id)) return;
     processedMessages.add(message.id);
     setTimeout(() => processedMessages.delete(message.id), 2000);
@@ -52,7 +52,7 @@ module.exports = (client) => {
       const command = args.shift().toLowerCase();
       const contentAfterCmd = message.content.slice(config.PREFIX.length + command.length).trim();
 
-      // =============== LỆNH THÊM: zres (Riêng biệt từng server) ===============
+      // =============== LỆNH THÊM: zres ===============
       if (command === 'res') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
@@ -88,11 +88,11 @@ module.exports = (client) => {
         };
         saveDB(); 
         
-        // Chỉ bắn ra DUY NHẤT 1 dòng thông báo chuẩn xác này, không x2 nữa
-        return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** tại server này! ${imageUrl ? '(Có đính kèm ảnh)' : ''}`);
+        // Trả về đúng 1 dòng thông báo duy nhất tại server này
+        return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** tại server này!`);
       }
 
-      // LỆNH XÓA: zdelres (Riêng biệt từng server)
+      // LỆNH XÓA: zdelres
       if (command === 'delres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xóa Auto Response!');
@@ -110,7 +110,7 @@ module.exports = (client) => {
         }
       }
 
-      // LỆNH DANH SÁCH: zlistres (Riêng biệt từng server)
+      // LỆNH DANH SÁCH: zlistres
       if (command === 'listres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xem danh sách Auto Response!');
@@ -140,11 +140,11 @@ module.exports = (client) => {
       }
     }
 
-    // =============== CƠ CHẾ AUTO REP: KHỚP CHÍNH XÁC TUYỆT ĐỐI (EXACT MATCH) ===============
+    // =============== CƠ CHẾ AUTO REP: KHỚP CHÍNH XÁC TUYỆT ĐỐI (EXACT MATCH 100%) ===============
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
       const userMsg = message.content.trim().toLowerCase();
       
-      // Chỉ khi tin nhắn khớp 100% với từ khóa trong server hiện tại mới phản hồi
+      // CHỈ PHẢN HỒI KHI TIN NHẮN TRÙNG KHỚP 100% (Không thừa không thiếu một ký tự)
       if (autoResponses[userMsg]) {
         const resData = autoResponses[userMsg];
         
