@@ -4,8 +4,6 @@ const config = require('./config');
 const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
-
-// Khóa chống trùng lặp tiến trình toàn cục
 const processedMessages = new Set();
 
 function isGAAdmin(member) {
@@ -36,7 +34,7 @@ module.exports = (client) => {
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // Chống lặp tiến trình trong 2 giây
+    // Chống lặp tiến trình tin nhắn trong 2 giây
     if (processedMessages.has(message.id)) return;
     processedMessages.add(message.id);
     setTimeout(() => processedMessages.delete(message.id), 2000);
@@ -47,12 +45,15 @@ module.exports = (client) => {
     }
     const autoResponses = dbData[guildId];
 
-    if (message.content.toLowerCase().startsWith(config.PREFIX)) {
-      const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
-      const command = args.shift().toLowerCase();
-      const contentAfterCmd = message.content.slice(config.PREFIX.length + command.length).trim();
+    const messageContent = message.content.trim();
 
-      // =============== LỆNH THÊM: zres ===============
+    // =============== XỬ LÝ CÁC LỆNH (PREFIX) ===============
+    if (messageContent.toLowerCase().startsWith(config.PREFIX)) {
+      const args = messageContent.slice(config.PREFIX.length).trim().split(/ +/);
+      const command = args.shift().toLowerCase();
+      const contentAfterCmd = messageContent.slice(config.PREFIX.length + command.length).trim();
+
+      // LỆNH: zres
       if (command === 'res') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
@@ -88,11 +89,10 @@ module.exports = (client) => {
         };
         saveDB(); 
         
-        // Trả về đúng 1 dòng thông báo duy nhất tại server này
         return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** tại server này!`);
       }
 
-      // LỆNH XÓA: zdelres
+      // LỆNH: zdelres
       if (command === 'delres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xóa Auto Response!');
@@ -110,7 +110,7 @@ module.exports = (client) => {
         }
       }
 
-      // LỆNH DANH SÁCH: zlistres
+      // LỆNH: zlistres
       if (command === 'listres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xem danh sách Auto Response!');
@@ -138,26 +138,26 @@ module.exports = (client) => {
         listEmbed.setDescription(description);
         return message.reply({ embeds: [listEmbed] });
       }
+
+      return; // Dừng lại nếu là lệnh, không chạy xuống phần auto-rep bên dưới
     }
 
-    // =============== CƠ CHẾ AUTO REP: KHỚP CHÍNH XÁC TUYỆT ĐỐI (EXACT MATCH 100%) ===============
-    else {
-      const userMsg = message.content.trim().toLowerCase();
+    // =============== CƠ CHẾ AUTO REP: EXACT MATCH 100% ===============
+    const userMsg = messageContent.toLowerCase();
+
+    // Kiểm tra xem trong cơ sở dữ liệu có từ khóa khớp tuyệt đối 100% không
+    if (autoResponses[userMsg]) {
+      const resData = autoResponses[userMsg];
       
-      // CHỈ PHẢN HỒI KHI TOÀN BỘ NỘI DUNG TIN NHẮN TRÙNG KHỚP 100% VỚI TRIGGER
-      if (autoResponses[userMsg]) {
-        const resData = autoResponses[userMsg];
-        
-        let contentToSend = {};
-        let textContent = typeof resData === 'object' ? resData.text : resData;
-        let imgContent = typeof resData === 'object' ? resData.image : null;
+      let contentToSend = {};
+      let textContent = typeof resData === 'object' ? resData.text : resData;
+      let imgContent = typeof resData === 'object' ? resData.image : null;
 
-        if (textContent) contentToSend.content = textContent;
-        if (imgContent) contentToSend.files = [imgContent];
+      if (textContent) contentToSend.content = textContent;
+      if (imgContent) contentToSend.files = [imgContent];
 
-        if (Object.keys(contentToSend).length > 0) {
-          message.channel.send(contentToSend).catch(() => {});
-        }
+      if (Object.keys(contentToSend).length > 0) {
+        await message.channel.send(contentToSend).catch(() => {});
       }
     }
   });
