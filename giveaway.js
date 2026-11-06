@@ -3,7 +3,10 @@ const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
-  return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  return false;
 }
 
 function parseDuration(str) {
@@ -24,7 +27,7 @@ module.exports = (client) => {
     const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // 1. LỆNH TẠO GIVEAWAY: zga [@Role] <số_người> <thời_gian> <phần_thưởng>
+    // 1. LỆNH TẠO GIVEAWAY
     if (command === 'ga') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền tạo Giveaway!**');
 
@@ -49,7 +52,6 @@ module.exports = (client) => {
 
       const endsAt = Date.now() + durationMs;
 
-      // Giao diện chuẩn tuyệt đối theo đúng yêu cầu của Đức
       const gaEmbed = new EmbedBuilder()
         .setTitle('<:emoji_11:1567468310419742810> WINE GIVEAWAY <:emoji_11:1567468310419742810>')
         .setDescription(
@@ -66,7 +68,6 @@ module.exports = (client) => {
       const gaMessage = await message.channel.send({ embeds: [gaEmbed] });
       if (message.deletable) message.delete().catch(() => {});
 
-      // Bot tự thả reaction custom emoji 11 để người chơi bấm vào tham gia
       await gaMessage.react('1567468310419742810').catch(() => {});
 
       client.activeGiveaways.set(gaMessage.id, {
@@ -79,7 +80,6 @@ module.exports = (client) => {
         endsAt
       });
 
-      // Hẹn giờ kết thúc GA
       setTimeout(async () => {
         const gaData = client.activeGiveaways.get(gaMessage.id);
         if (!gaData) return;
@@ -90,7 +90,6 @@ module.exports = (client) => {
         const msg = await channel.messages.fetch(gaData.messageId).catch(() => null);
         if (!msg) return;
 
-        // Lấy danh sách user đã react custom emoji 11
         const reaction = msg.reactions.cache.find(r => r.emoji.id === '1567468310419742810');
         let participants = [];
         if (reaction) {
@@ -98,7 +97,6 @@ module.exports = (client) => {
           participants = users.filter(u => !u.bot).map(u => u.id);
         }
 
-        // Lọc theo điều kiện role nếu có
         let validParticipants = participants;
         if (gaData.roleId && channel.guild) {
           validParticipants = [];
@@ -136,7 +134,7 @@ module.exports = (client) => {
       }, durationMs);
     }
 
-    // 2. LỆNH KẾT THÚC SỚM: zend
+    // 2. LỆNH KẾT THÚC SỚM
     if (command === 'end') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền kết thúc GA!**');
       if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn thông báo Giveaway cần kết thúc!');
@@ -193,7 +191,7 @@ module.exports = (client) => {
       }
     }
 
-    // 3. LỆNH REROLL: zgarr
+    // 3. LỆNH REROLL
     if (command === 'zgarr' || command === 'reroll') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền Reroll!**');
       if (!message.reference) return message.reply('❌ Hãy **Reply** vào tin nhắn kết quả Giveaway!');
