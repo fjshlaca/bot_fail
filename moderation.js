@@ -3,7 +3,10 @@ const config = require('./config');
 
 function isGAAdmin(member) {
   if (!member) return false;
-  return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
+  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
+  if (adminIds.includes(member.id)) return true;
+  if (config.ALLOWED_ROLE_IDS && member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id))) return true;
+  return false;
 }
 
 function parseCustomDuration(str) {
@@ -108,7 +111,7 @@ module.exports = (client) => {
       } catch (err) { message.reply('❌ Không thể Ban người này!'); }
     }
 
-    // PHẠT TÙ (TU, TRON, ANCUT)
+    // PHẠT TÙ
     if (command === 'tu') {
       if (!isGAAdmin(message.member)) return message.reply('❌ **Bạn không có quyền!**');
       const { member: targetUser, argsShift } = await getTargetMember(message);
