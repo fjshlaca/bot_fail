@@ -1,158 +1,55 @@
-const fs = require('fs');
-const path = require('path');
-const config = require('./config');
-const { EmbedBuilder } = require('discord.js');
-
-const dbPath = path.join(__dirname, 'responses.json');
-
-// Hàm kiểm tra quyền Admin (Hỗ trợ chuẩn mảng BOT_ADMIN_ID chứa nhiều người)
-function isGAAdmin(member) {
-  if (!member) return false;
-  const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
-  return adminIds.includes(member.id) || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
-}
-
-module.exports = (client) => {
-  let autoResponses = {};
+module.exports = {
+  BOT_ADMIN_ID: [
+    '1247253243336069264',
+    '1173115241274560566'
+  ],
+  ALLOWED_ROLE_IDS: [
+    '1539318114913620038',
+    '1537508547234111639',
+    '1537784243692769320'
+  ],
+  JAIL_CHANNEL_ID: '1567570022224625817',
+  REQUIRED_ROLE_ID: '1425167156668141728',
+  PREFIX: 'z',
+  EMOJI_GA_ID: '1567468310419742810',
+  GA_THUMBNAIL: 'https://media.discordapp.net/attachments/1425167406686404808/1567463399909097533/Photoroom_20261104_154923.png?ex=6aec458c&is=6aeaf40c&hm=42389ce875d5d5c835f606cb5a6fdf5ad8ab194d2b810c1ed3a8c429d39f0328&=&format=webp&quality=lossless&width=626&height=626',
+  GA_GIF: 'https://media.discordapp.net/attachments/1425167406686404808/1567463400647426109/2FE0AAB4-BB1C-4A82-A922-3F7D419E7105.png?ex=6aec458c&is=6aeaf40c&hm=2e038e911c66cc7be4e1d8f577e4da653e15a8adb6ea2b63b242437f2fd38ef7&=&format=webp&quality=lossless&width=1111&height=626',
   
-  // Đọc database
-  if (fs.existsSync(dbPath)) {
-    try {
-      autoResponses = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
-    } catch (e) {
-      console.error("Lỗi đọc file responses.json:", e);
-    }
-  } else {
-    fs.writeFileSync(dbPath, JSON.stringify({}), 'utf8');
-  }
+  TAUNT_MESSAGES: [
+    "Cố lên con trai, nhai kỹ nuốt chậm vào! 💩", "Hương vị này có làm em xao xuyến không hả phạm nhân? 😂",
+    "Ngon thế nhờ, làm thêm miếng nữa đi cháu ơi! 🍽️", "Tay nhanh hơn não hay não chậm hơn miệng thế? Gõ tiếp đi chờ gì nữa! 🤡",
+    "Ăn cứt rãnh tay thế, chắc ở ngoài nghiệp quật nhiều lắm hả? 💀", "Cứ từ từ thưởng thức đi, ở trong này thời gian dài lắm anh em ạ~ 🕰️",
+    "Nốc cho đẫm vào rồi ngày mai lại được vào ăn tiếp nhé! 🍼", "Uống nước suối súc miệng xong chiến tiếp đi bẹn ơi! 🚰",
+    "Độ mặn của món này hình như hơi quá hả? Thêm mấy chục nháy nữa cho vừa miệng nè! 🧂", "Kém sang thế nhờ, sao lại để bị bắt vào đây gặm cái này thế hả? 🐒",
+    "Cố lên, nuốt trôi cục này là thấy ánh sáng cuối đường hầm liền (hoặc là ko)... 🕳️", "Nghiệp chướng do mồm gây ra thì mồm phải chịu thôi con ạ! 🤫",
+    "Nhìn mặt thộn thế kia chắc đang cay cú lắm đúng không? Gõ tiếp đi cưng! 😼", "Mỗi lần gõ là một lần bớt dại, rèn luyện tư duy đỉnh cao ghê ta! 🧠",
+    "Cẩn thận nghẹn đấy nhé, không ai cứu đằng ấy đâu nha~ 🥤", "Ăn nhiều vào cho mau lớn, lớn rồi thì đừng có báo nữa nghe chưa! 👶",
+    "Húp trọn bát này xong chắc tinh thần sảng khoái hẳn lên nhỉ? ✨", "Đúng là tuổi trẻ tài cao, tài thì chưa thấy toàn thấy cút với chả đậu! 📉",
+    "Cố tình gõ sai chính tả hay do tay run quá đấy hả đại vương? 🧓", "Sám hối kiểu này chắc Phật tổ cũng phải quỳ gối xin hàng luôn quá! 🙏"
+  ],
 
-  // Hàm lưu database
-  function saveDB() {
-    fs.writeFileSync(dbPath, JSON.stringify(autoResponses, null, 2), 'utf8');
-  }
+  FAIL_STORIES: [
+    { title: "<:emoji_20:1567861679788658718> Suýt Chạm Tay Đến Báu Vật!", desc: `Người chơi {USER} vừa bỏ lỡ một chút nữa là tìm thấy bảo vật quý giá rồi!\n\nLời nhắn: Có lẽ bảo vật vẫn chưa muốn lộ diện, hãy tiếp tục hành trình khai mở kho báu và thử vận may lần nữa nhé!` },
+    { title: "<:emoji_19:1567861657823346718> Báu Vật Suýt Được Khai Mở!", desc: `₊˚⊹ Người chơi {USER} vừa chạm đến ngưỡng cửa kho báu, nhưng món bảo vật vẫn chưa chịu xuất hiện!\n\n♡ Lời nhắn: Có lẽ duyên gặp gỡ vẫn chưa đến, hãy thử khai mở thêm lần nữa nhé!` },
+    { title: "<:emoji_17:1567861637073866933> Chìa Khóa Chưa Tìm Được Ổ!", desc: `₊˚⊹ Người chơi {USER} đã tiến rất gần đến kho báu, tiếc rằng chiếc chìa khóa may mắn vẫn chưa nằm trong tay bạn!\n\n♡ Lời nhắn: Đừng vội bỏ cuộc, cánh cửa bí mật vẫn đang chờ người mở khóa!` },
+    { title: "<:emoji_23:1567861756477571142> Bảo Vật Vẫn Đang Ẩn Mình!", desc: `₊˚⊹ Người chơi {USER} vừa suýt tìm thấy món bảo vật quý hiếm, nhưng nó vẫn chưa muốn lộ diện!\n\n♡ Lời nhắn: Kiên nhẫn thêm một chút, vận may có thể đang ở ngay lượt tiếp theo!` },
+    { title: "<:emoji_22:1567861737187836024> Định Mệnh Chưa Gọi Tên!", desc: `₊˚⊹ Người chơi {USER} đã có một cuộc gặp gỡ hụt với bảo vật quý giá, nhưng định mệnh vẫn chưa chính thức xướng tên bạn!\n\n♡ Lời nhắn: Hãy tiếp tục chờ đón khoảnh khắc hữu duyên ấy nhé!` },
+    { title: "<:emoji_21:1567861715767660615> Ngai Vàng Vẫn Chưa Có Chủ!", desc: `. ̊✢ Người chơi {USER} vừa bỏ lỡ cơ hội chạm tay đến danh vị quý giá!\n\n♡ Lời nhắn: Vương miện vẫn đang đợi chủ nhân xứng đáng, hãy tiếp tục thử vận may nhé!` }
+  ],
 
-  client.on('messageCreate', async (message) => {
-    // Bỏ qua tin nhắn của bot hoặc DM riêng
-    if (message.author.bot || !message.guild || !message.member) return;
+  ROLE_ENTRIES: {
+    '1393150909327999006': 1,
+    '1393151668144574474': 2,
+    '1393151139972644905': 3,
+    '1393170229072367758': 4
+  },
 
-    // =============== XỬ LÝ LỆNH TẠO/XÓA/XEM AUTO RESPONSE ===============
-    if (message.content.toLowerCase().startsWith(config.PREFIX)) {
-      const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
-      const command = args.shift().toLowerCase();
-      
-      const contentAfterCmd = message.content.slice(config.PREFIX.length + command.length).trim();
-
-      // 1. LỆNH THÊM: zres <từ_khóa> _ <phản_hồi> (Hỗ trợ đính kèm ảnh)
-      if (command === 'res') {
-        if (!isGAAdmin(message.member)) {
-          return message.reply('❌ Bạn không có quyền cài Auto Response!');
-        }
-        
-        if (!contentAfterCmd.includes('_')) {
-          return message.reply('❌ Cú pháp sai! Phải có dấu `_` để ngăn cách.\nVD: `zres đã _ Chúc mừng nhé` (và nhớ đính kèm ảnh nếu muốn gửi ảnh).');
-        }
-
-        const parts = contentAfterCmd.split('_');
-        const trigger = parts.shift().trim().toLowerCase();
-        let responseText = parts.join('_').trim(); 
-        
-        if (!trigger) {
-           return message.reply('❌ Từ khóa không được để trống!');
-        }
-
-        let imageUrl = null;
-        if (message.attachments.size > 0) {
-          const attachment = message.attachments.first();
-          if (attachment.contentType && attachment.contentType.startsWith('image')) {
-            imageUrl = attachment.url;
-          }
-        }
-
-        if (!responseText && !imageUrl) {
-           return message.reply('❌ Phải có ít nhất nội dung chữ hoặc một bức ảnh đính kèm để làm phản hồi!');
-        }
-
-        autoResponses[trigger] = {
-          text: responseText || '',
-          image: imageUrl || null
-        };
-        saveDB(); 
-        
-        return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** ${imageUrl ? '(Có đính kèm ảnh)' : ''}`);
-      }
-
-      // 2. LỆNH XÓA: zdelres <từ_khóa>
-      if (command === 'delres') {
-        if (!isGAAdmin(message.member)) {
-          return message.reply('❌ Bạn không có quyền xóa Auto Response!');
-        }
-        
-        const trigger = contentAfterCmd.toLowerCase();
-        if (!trigger) return message.reply('❌ Cú pháp sai! VD: `zdelres chó`');
-
-        if (autoResponses[trigger]) {
-          delete autoResponses[trigger];
-          saveDB();
-          return message.reply(`✅ Đã xóa tự động trả lời cho từ khóa: **"${trigger}"**`);
-        } else {
-          return message.reply(`❌ Không tìm thấy từ khóa **"${trigger}"** trong danh sách.`);
-        }
-      }
-
-      // 3. LỆNH DANH SÁCH: zlistres
-      if (command === 'listres') {
-        const triggers = Object.keys(autoResponses);
-        if (triggers.length === 0) {
-          return message.reply('📭 Hiện tại chưa có từ khóa Auto Response nào được thiết lập.');
-        }
-
-        const listEmbed = new EmbedBuilder()
-          .setTitle('📜 Danh sách Auto Response')
-          .setColor(0xC7A9C9)
-          .setTimestamp();
-
-        let description = '';
-        triggers.forEach((trg, index) => {
-          let item = autoResponses[trg];
-          let text = typeof item === 'object' ? item.text : item;
-          let hasImg = typeof item === 'object' && item.image ? ' 🖼️ [Có ảnh]' : '';
-          
-          if (text.length > 40) text = text.substring(0, 37) + '...';
-          description += `**${index + 1}.** \`${trg}\` ➔ ${text || '(Chỉ có ảnh)'}${hasImg}\n`;
-        });
-
-        listEmbed.setDescription(description);
-        return message.reply({ embeds: [listEmbed] });
-      }
-    }
-
-    // =============== CƠ CHẾ AUTO REP NHẬN DIỆN ĐẦU CÂU ===============
-    if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
-      // Ưu tiên cụm từ khóa dài trước
-      const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
-      
-      for (const trigger of triggers) {
-        const escapedTrigger = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Regex bắt từ khóa ở đầu câu, không phân biệt hoa/thường (cờ 'i')
-        const regex = new RegExp(`^${escapedTrigger}(?=[.,!?\\s]|$)`, 'i');
-        
-        if (regex.test(message.content)) {
-          const resData = autoResponses[trigger];
-          
-          let contentToSend = {};
-          let textContent = typeof resData === 'object' ? resData.text : resData;
-          let imgContent = typeof resData === 'object' ? resData.image : null;
-
-          if (textContent) contentToSend.content = textContent;
-          if (imgContent) contentToSend.files = [imgContent];
-
-          if (Object.keys(contentToSend).length > 0) {
-            // Gửi thẳng xuống kênh, không reply
-            message.channel.send(contentToSend).catch(() => {});
-          }
-          break; // Chỉ rep 1 từ khóa đầu tiên tìm thấy
-        }
-      }
-    }
-  });
+  GACHA_POOL: [
+    { id: null,                  weight: 65, name: 'Chúc may mắn lần sau', level: 0 },
+    { id: '1393170229072367758', weight: 25, name: 'Royal Role Cấp 5',    level: 5 },
+    { id: '1393151668144574474', weight: 5,  name: 'Royal Role Cấp 4',    level: 4 },
+    { id: '1393151139972644905', weight: 3,  name: 'Royal Role Cấp 3',    level: 3 },
+    { id: '1393150909327999006', weight: 1,  name: 'Royal Role Cấp 2',    level: 2 },
+    { id: '1393150502157680761', weight: 1,  name: 'Royal Role Cấp 1',    level: 1 }
+  ]
 };
