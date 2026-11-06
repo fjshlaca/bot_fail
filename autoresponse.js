@@ -13,47 +13,45 @@ function isGAAdmin(member) {
   return false;
 }
 
-// Bộ nhớ đệm chống trùng lặp tin nhắn trong vòng 2 giây
-const processedMessages = new Set();
-
 module.exports = (client) => {
-  let autoResponses = {};
+  let dbData = {}; // Cấu trúc lưu theo từng Server: { guildId: { trigger: { text, image } } }
+  
   if (fs.existsSync(dbPath)) {
     try {
-      autoResponses = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
+      dbData = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
     } catch (e) {
       console.error("Lỗi đọc file responses.json:", e);
     }
   } else {
-    fs.writeFileSync(dbPath, JSON.stringify({}), 'utf8');
+    fs.writeFileSync(dbPath, JSON.stringify({}, null, 2), 'utf8');
   }
 
   function saveDB() {
-    fs.writeFileSync(dbPath, JSON.stringify(autoResponses, null, 2), 'utf8');
+    fs.writeFileSync(dbPath, JSON.stringify(dbData, null, 2), 'utf8');
   }
 
   client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // CHỐNG TRÙNG LẶP TOÀN CỤC: Nếu ID tin nhắn này vừa được xử lý cách đây chưa tới 2 giây -> Bỏ qua lập tức
-    if (processedMessages.has(message.id)) return;
-    processedMessages.add(message.id);
-    setTimeout(() => processedMessages.delete(message.id), 2000);
+    const guildId = message.guild.id;
+    if (!dbData[guildId]) {
+      dbData[guildId] = {};
+    }
+    const autoResponses = dbData[guildId];
 
     if (message.content.toLowerCase().startsWith(config.PREFIX)) {
       const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
       const command = args.shift().toLowerCase();
-      
       const contentAfterCmd = message.content.slice(config.PREFIX.length + command.length).trim();
 
-      // =============== LỆNH THÊM: zres (Chỉ Admin/Role) ===============
+      // =============== LỆNH THÊM: zres (Riêng cho từng server) ===============
       if (command === 'res') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
         }
         
         if (!contentAfterCmd.includes('_')) {
-          return message.reply('❌ Cú pháp sai! Phải có dấu `_` để ngăn cách.\nVD: `zres đã _ Chúc mừng nhé` (và nhớ đính kèm ảnh nếu muốn gửi ảnh).');
+          return message.reply('❌ Cú pháp sai! Phải có dấu `_` để ngăn cách.\nVD: `zres đã _ Chúc mừng nhé`');
         }
 
         const parts = contentAfterCmd.split('_');
@@ -82,10 +80,10 @@ module.exports = (client) => {
         };
         saveDB(); 
         
-        return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** ${imageUrl ? '(Có đính kèm ảnh)' : ''}`);
+        return message.reply(`✅ Đã lưu Auto Response cho từ khóa: **"${trigger}"** tại server này! ${imageUrl ? '(Có đính kèm ảnh)' : ''}`);
       }
 
-      // LỆNH XÓA: zdelres (Chỉ Admin/Role)
+      // LỆNH XÓA: zdelres (Theo từng server)
       if (command === 'delres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xóa Auto Response!');
@@ -97,24 +95,24 @@ module.exports = (client) => {
         if (autoResponses[trigger]) {
           delete autoResponses[trigger];
           saveDB();
-          return message.reply(`✅ Đã xóa tự động trả lời cho từ khóa: **"${trigger}"**`);
+          return message.reply(`✅ Đã xóa tự động trả lời cho từ khóa: **"${trigger}"** tại server này!`);
         } else {
-          return message.reply(`❌ Không tìm thấy từ khóa **"${trigger}"** trong danh sách.`);
+          return message.reply(`❌ Không tìm thấy từ khóa **"${trigger}"** trong danh sách của server này.`);
         }
       }
 
-      // LỆNH DANH SÁCH: zlistres (Chỉ Admin/Role)
+      // LỆNH DANH SÁCH: zlistres (Theo từng server)
       if (command === 'listres') {
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền xem danh sách Auto Response!');
         }
         const triggers = Object.keys(autoResponses);
         if (triggers.length === 0) {
-          return message.reply('📭 Hiện tại chưa có từ khóa Auto Response nào được thiết lập.');
+          return message.reply('📭 Hiện tại chưa có từ khóa Auto Response nào được thiết lập ở server này.');
         }
 
         const listEmbed = new EmbedBuilder()
-          .setTitle('📜 Danh sách Auto Response')
+          .setTitle('📜 Danh sách Auto Response (Server này)')
           .setColor(0xC7A9C9)
           .setTimestamp();
 
@@ -133,28 +131,23 @@ module.exports = (client) => {
       }
     }
 
-    // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (AI CŨNG DÙNG ĐƯỢC) ===============
+    // =============== CƠ CHẾ AUTO REP: KHỚP CHÍNH XÁC 100% (EXACT MATCH) ===============
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
-      const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
+      const userMsg = message.content.trim().toLowerCase();
       
-      for (const trigger of triggers) {
-        const escapedTrigger = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`^${escapedTrigger}(?=[.,!?\\s]|$)`, 'i');
+      // Chỉ phản hồi khi nội dung tin nhắn KHỚP CHÍNH XÁC TUYỆT ĐỐI với từ khóa trong server này
+      if (autoResponses[userMsg]) {
+        const resData = autoResponses[userMsg];
         
-        if (regex.test(message.content)) {
-          const resData = autoResponses[trigger];
-          
-          let contentToSend = {};
-          let textContent = typeof resData === 'object' ? resData.text : resData;
-          let imgContent = typeof resData === 'object' ? resData.image : null;
+        let contentToSend = {};
+        let textContent = typeof resData === 'object' ? resData.text : resData;
+        let imgContent = typeof resData === 'object' ? resData.image : null;
 
-          if (textContent) contentToSend.content = textContent;
-          if (imgContent) contentToSend.files = [imgContent];
+        if (textContent) contentToSend.content = textContent;
+        if (imgContent) contentToSend.files = [imgContent];
 
-          if (Object.keys(contentToSend).length > 0) {
-            message.channel.send(contentToSend).catch(() => {});
-          }
-          break;
+        if (Object.keys(contentToSend).length > 0) {
+          message.channel.send(contentToSend).catch(() => {});
         }
       }
     }
