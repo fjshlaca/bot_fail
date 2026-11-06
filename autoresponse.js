@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
 
-// Hàm kiểm tra quyền Admin hoặc 3 role được cấp phép (giống bên giveaway)
+// Hàm kiểm tra quyền Admin hoặc 3 role được cấp phép
 function isGAAdmin(member) {
   if (!member) return false;
   return member.id === config.BOT_ADMIN_ID || member.roles.cache.some(r => config.ALLOWED_ROLE_IDS.includes(r.id));
@@ -27,10 +28,8 @@ module.exports = (client) => {
   }
 
   client.on('messageCreate', async (message) => {
-    // Bỏ qua tin nhắn của bot
     if (message.author.bot || !message.guild || !message.member) return;
 
-    // =============== XỬ LÝ LỆNH THÊM / XÓA RESPONE ===============
     if (message.content.toLowerCase().startsWith(config.PREFIX)) {
       const args = message.content.slice(config.PREFIX.length).trim().split(/ +/);
       const command = args.shift().toLowerCase();
@@ -39,7 +38,6 @@ module.exports = (client) => {
 
       // LỆNH THÊM: zres <từ của tôi> _ <từ respone>
       if (command === 'res') {
-        // Áp dụng quyền của 3 role + Admin
         if (!isGAAdmin(message.member)) {
           return message.reply('❌ Bạn không có quyền cài Auto Response!');
         }
@@ -49,7 +47,7 @@ module.exports = (client) => {
         }
 
         const parts = contentAfterCmd.split('_');
-        const trigger = parts.shift().trim().toLowerCase(); // Lưu khóa ở dạng chữ thường
+        const trigger = parts.shift().trim().toLowerCase();
         const responseText = parts.join('_').trim(); 
         
         if (!trigger || !responseText) {
@@ -79,28 +77,44 @@ module.exports = (client) => {
           return message.reply(`❌ Không tìm thấy từ khóa **"${trigger}"** trong danh sách.`);
         }
       }
+
+      // LỆNH DANH SÁCH: zlistres
+      if (command === 'listres') {
+        const triggers = Object.keys(autoResponses);
+        if (triggers.length === 0) {
+          return message.reply('📭 Hiện tại chưa có từ khóa Auto Response nào được thiết lập.');
+        }
+
+        // Tạo Embed hiển thị danh sách cho đẹp
+        const listEmbed = new EmbedBuilder()
+          .setTitle('📜 Danh sách Auto Response')
+          .setColor(0xC7A9C9)
+          .setTimestamp();
+
+        let description = '';
+        triggers.forEach((trg, index) => {
+          // Cắt ngắn câu trả lời nếu quá dài để khung nhìn gọn gàng
+          let resText = autoResponses[trg];
+          if (resText.length > 50) resText = resText.substring(0, 47) + '...';
+          description += `**${index + 1}.** Từ khóa: \`${trg}\`\n💬 Phản hồi: ${resText}\n\n`;
+        });
+
+        listEmbed.setDescription(description);
+        return message.reply({ embeds: [listEmbed] });
+      }
     }
 
     // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (AI CŨNG XÀI ĐƯỢC) ===============
-    // Bỏ qua nếu là lệnh của bot
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
-      
-      // Sắp xếp khóa dài lên trước để không bị dẫm chân
       const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
       
       for (const trigger of triggers) {
         const escapedTrigger = trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        
-        // Regex giải thích:
-        // ^: Đầu câu
-        // (?=[.,!?\s]|$): Theo sau là dấu cách, dấu câu hoặc hết câu
-        // i: Không phân biệt chữ hoa, chữ thường (Em cá, eM cá, EM CÁ đều dính)
         const regex = new RegExp(`^${escapedTrigger}(?=[.,!?\\s]|$)`, 'i');
         
         if (regex.test(message.content)) {
-          // Dùng channel.send để gửi thẳng, KHÔNG reply tin nhắn người chat
           message.channel.send(autoResponses[trigger]).catch(() => {});
-          break; // Tìm thấy phát là nhả rep và dừng, không kiểm tra các từ khác
+          break;
         }
       }
     }
