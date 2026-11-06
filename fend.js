@@ -33,8 +33,8 @@ module.exports = (client) => {
           // Đổi dòng thời gian thành Đã kết thúc
           if (newEmbed.data.description) {
             let newDesc = newEmbed.data.description
-              .replace(/Còn lại:.*$/m, 'Trạng thái: **Đã kết thúc 🎉**')
-              .replace(/Thời gian khai tiệc còn lại:.*$/m, 'Trạng thái: **Đã kết thúc 🎉**');
+              .replace(/Còn lại:.*$/m, 'Trạng thái: **Đã kết thúc **')
+              .replace(/Thời gian khai tiệc còn lại:.*$/m, 'Trạng thái: **Đã kết thúc **');
             
             newEmbed.setDescription(newDesc);
           }
