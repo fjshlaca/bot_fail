@@ -5,7 +5,9 @@ const { EmbedBuilder } = require('discord.js');
 
 const dbPath = path.join(__dirname, 'responses.json');
 
-// Lõi quyền lực God Mode (2 ID Admin + 3 Role)
+// Biến cờ khóa chống chạy lặp x2 do bị require nhiều lần
+let isInitialized = false;
+
 function isGAAdmin(member) {
   if (!member) return false;
   const adminIds = Array.isArray(config.BOT_ADMIN_ID) ? config.BOT_ADMIN_ID : [config.BOT_ADMIN_ID];
@@ -15,6 +17,9 @@ function isGAAdmin(member) {
 }
 
 module.exports = (client) => {
+  if (isInitialized) return; // Nếu đã khởi động rồi thì chặn luôn, không cho đăng ký sự kiện lần 2
+  isInitialized = true;
+
   let autoResponses = {};
   if (fs.existsSync(dbPath)) {
     try {
@@ -127,7 +132,6 @@ module.exports = (client) => {
     }
 
     // =============== CƠ CHẾ AUTO REP ĐẦU CÂU (AI CŨNG DÙNG ĐƯỢC) ===============
-    // Đã thêm điều kiện loại trừ tiền tố lệnh (z) để tránh tự trigger lặp tin nhắn
     if (!message.content.toLowerCase().startsWith(config.PREFIX)) {
       const triggers = Object.keys(autoResponses).sort((a, b) => b.length - a.length);
       
